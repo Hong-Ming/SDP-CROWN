@@ -1,6 +1,6 @@
 # MNIST
-# python sdp_crown.py --model mnist_mlp --radius 1.0
-python sdp_crown.py --model mnist_convsmall --radius 0.3
+python sdp_crown.py --model mnist_mlp --radius 1.0
+# python sdp_crown.py --model mnist_convsmall --radius 0.3
 # python sdp_crown.py --model mnist_convlarge --radius 0.3
 
 # CIRAR10
