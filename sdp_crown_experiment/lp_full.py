@@ -166,8 +166,8 @@ if __name__ == '__main__':
         'cifar10_convlarge',
         ])
     args = parser.parse_args()
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    # device = torch.device('cpu')
+    # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device('cpu')
     model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
 
     # Run original model for clean accuracy.
