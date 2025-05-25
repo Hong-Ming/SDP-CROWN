@@ -21,7 +21,8 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
     for idx, (image, label) in enumerate(zip(dataset, labels)):
         if idx not in clean_output:
             continue
-
+        
+        sample_idx = args.start + idx
         verifiction_status = "Success"
         image = image.unsqueeze(0).to(device)
         label = label.unsqueeze(0).to(device)
@@ -47,20 +48,20 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
             if torch.any(crown_lb < 0):
                 verification_fail += 1
                 verifiction_status = "Fail"
-                verification_fail_idx.append(idx)
+                verification_fail_idx.append(sample_idx)
             elapsed_time = end_time - start_time
             total_time += elapsed_time
             sample_log = {
-                'sample_idx': idx,
+                'sample_idx': sample_idx,
                 'true_label': label.item() if isinstance(label, torch.Tensor) else label,
                 'margins': crown_lb.cpu().tolist(),       
                 'verifiction_status': verifiction_status,
                 'elapsed_time': elapsed_time,
             }
-            with open(f'{log_dir}/sample_{idx}.log', "w", encoding='utf-8') as f:
+            with open(f'{log_dir}/sample_{sample_idx}.log', "w", encoding='utf-8') as f:
                 for key, val in sample_log.items():
                     f.write(f"{key}: {val}\n") 
-            print(f'Sample {idx}, verifiction_status: {verifiction_status}, elapsed_time: {elapsed_time}s')
+            print(f'Sample {sample_idx}, verifiction_status: {verifiction_status}, elapsed_time: {elapsed_time}s')
     
     verified_accuracy = (samples-verification_fail)/samples*100
     average_time =  total_time/len(clean_output)

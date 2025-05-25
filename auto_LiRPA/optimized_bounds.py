@@ -3,10 +3,10 @@
 ##   α,β-CROWN (alpha-beta-CROWN) neural network verifier developed    ##
 ##   by the α,β-CROWN Team                                             ##
 ##                                                                     ##
-##   Copyright (C) 2020-2025 The α,β-CROWN Team                        ##
-##   Primary contacts: Huan Zhang <huan@huan-zhang.com> (UIUC)         ##
-##                     Zhouxing Shi <zshi@cs.ucla.edu> (UCLA)          ##
-##                     Xiangru Zhong <xiangru4@illinois.edu> (UIUC)    ##
+##   Copyright (C) 2020-2024 The α,β-CROWN Team                        ##
+##   Primary contacts: Huan Zhang <huan@huan-zhang.com>                ##
+##                     Zhouxing Shi <zshi@cs.ucla.edu>                 ##
+##                     Kaidi Xu <kx46@drexel.edu>                      ##
 ##                                                                     ##
 ##    See CONTRIBUTORS for all author contacts and affiliations.       ##
 ##                                                                     ##
@@ -14,7 +14,6 @@
 ##        contained in the LICENCE file in this directory.             ##
 ##                                                                     ##
 #########################################################################
-from .bound_ops import *
 import time
 import os
 from collections import OrderedDict
@@ -24,11 +23,8 @@ import torch
 from torch import optim
 from .beta_crown import print_optimized_beta
 from .cuda_utils import double2float
-from .utils import reduction_sum, multi_spec_keep_func_all
+from .utils import logger, reduction_sum, multi_spec_keep_func_all
 from .opt_pruner import OptPruner
-### preprocessor-hint: private-section-start
-from .adam_element_lr import AdamElementLR
-### preprocessor-hint: private-section-end
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -38,7 +34,7 @@ if TYPE_CHECKING:
 default_optimize_bound_args = {
     'enable_alpha_crown': True,  # Enable optimization of alpha.
     'enable_beta_crown': False,  # Enable beta split constraint.
-    'enable_SDP_crown': False,   # Enable optimization for L2 norm.
+    'enable_SDP_crown': False,    # Enable optimization for L2 norm.
 
     'apply_output_constraints_to': [],  # Enable optimization w.r.t. output constraints.
     'tighten_input_bounds': False,  # Don't tighten input bounds
@@ -63,8 +59,11 @@ default_optimize_bound_args = {
     # Learning rate for the optimizable parameter beta in beta-CROWN.
     'lr_beta': 0.05,
     'lr_cut_beta': 5e-3,  # Learning rate for optimizing cut betas.
-    # Learning rate for the optimizable parameter lambda in SDP-CROWN.
+    # Learning rate for the optimizable parameter s,t  in L2-CROWN.
+    'lr_st': 0.05,
+    # Learning rate for the optimizable parameter lambda in L2-CROWN.
     'lr_lambda_out': 0.01,
+    'lr_lambda_in': 0.05,
     # Initial alpha variables by calling CROWN once.
     'init_alpha': True,
     'lr_coeffs': 0.01,  # Learning rate for coeffs for refinement
@@ -95,12 +94,8 @@ default_optimize_bound_args = {
     'multi_spec_keep_func': multi_spec_keep_func_all,
     # Use the newly fixed loss function. By default, it is set to False
     # for compatibility with existing use cases.
-    ### preprocessor-hint: private-section-start
-    # See https://github.com/Verified-Intelligence/Verifier_Development/issues/170.
-    ### preprocessor-hint: private-section-end
     # Try to ensure that the parameters always match with the optimized bounds.
     'deterministic': False,
-    'max_time': 1e9,
 }
 
 
@@ -112,7 +107,6 @@ def opt_reuse(self: 'BoundedModule'):
 def opt_no_reuse(self: 'BoundedModule'):
     for node in self.get_enabled_opt_act():
         node.opt_no_reuse()
-
 
 def _set_alpha(optimizable_activations, parameters, alphas, lr):
     """Set best_alphas, alphas and parameters list."""
@@ -131,28 +125,33 @@ def _set_alpha(optimizable_activations, parameters, alphas, lr):
             best_alphas[m.name][alpha_m] = m.alpha[alpha_m].detach().clone()
             # We will directly replace the dictionary for each activation layer after
             # optimization, so the saved alpha might not have require_grad=True.
-            m.alpha[alpha_m].requires_grad_()
-
+            m.alpha[alpha_m].requires_grad_()    
     return best_alphas
 
-def _set_L2_optimizable_variables(optimizable_activations, parameters, lambdas_out, out_lr):
+def _set_L2_optimizable_variables(optimizable_activations, parameters, lambdas_out, lambdas_in, out_lr, in_lr):
     """Set best_variables, variables and parameters list."""
     for node in optimizable_activations:
         lambdas_out.extend(list(node.lambda_out.values()))
-        node.SDP_CROWN_start()
+        lambdas_in.extend(list(node.lambda_in.values()))
+        node.opt_L2()
     # Variables has shape (2, output_shape, batch_dim, node_shape)
     parameters.append({'params': lambdas_out, 'lr': out_lr, 'batch_dim': 2})
+    parameters.append({'params': lambdas_in, 'lr': in_lr, 'batch_dim': 2})
     # best_variables is a dictionary of dictionary. Each key is the variable
     # for one activation layer, and each value is a dictionary contains all
     # activation layers after that layer as keys.
     best_lambdas_out = OrderedDict()
+    best_lambdas_in = OrderedDict()
     for m in optimizable_activations:
         best_lambdas_out[m.name] = {}
+        best_lambdas_in[m.name] = {}
         for lambda_m in m.lambda_out:
             best_lambdas_out[m.name][lambda_m] = m.lambda_out[lambda_m].detach().clone()
-            m.lambda_out[lambda_m].requires_grad_()
-    return best_lambdas_out
-
+            m.lambda_out[lambda_m].requires_grad_()    
+        for lambda_m in m.lambda_in:
+            best_lambdas_in[m.name][lambda_m] = m.lambda_in[lambda_m].detach().clone()
+            m.lambda_in[lambda_m].requires_grad_() 
+    return best_lambdas_out, best_lambdas_in
 
 def _set_gammas(nodes, parameters):
     """
@@ -259,6 +258,7 @@ def _update_best_ret(full_ret_bound, best_ret_bound, full_ret, best_ret,
                 full_ret_bound[improved_idx], best_ret_bound[improved_idx])
         else:
             best_ret_bound[improved_idx] = full_ret_bound[improved_idx]
+            
         if full_ret[idx] is not None:
             if not deterministic:
                 best_ret[idx][improved_idx] = compare(
@@ -269,11 +269,10 @@ def _update_best_ret(full_ret_bound, best_ret_bound, full_ret, best_ret,
 
     return best_ret_bound, best_ret, need_update, idx_mask, improved_idx
 
-
 def _update_optimizable_activations(
         optimizable_activations, interm_bounds,
         fix_interm_bounds, best_intermediate_bounds,
-        reference_idx, idx, alpha, best_alphas, enable_SDP_crown, best_lambdas_out, deterministic):
+        reference_idx, idx, alpha, best_alphas, optimize_L2_case, best_lambdas_out, best_lambdas_in, deterministic):
     """
     Update bounds and alpha of optimizable_activations.
     """
@@ -281,8 +280,6 @@ def _update_optimizable_activations(
         # Update best intermediate layer bounds only when they are optimized.
         # If they are already fixed in interm_bounds, then do
         # nothing.
-        if node.name not in best_intermediate_bounds:
-            continue
         if (interm_bounds is None
                 or node.inputs[0].name not in interm_bounds
                 or not fix_interm_bounds):
@@ -302,9 +299,11 @@ def _update_optimizable_activations(
             for alpha_m in node.alpha:
                 best_alphas[node.name][alpha_m][:, :,
                     idx] = node.alpha[alpha_m][:, :, idx]
-        if enable_SDP_crown:
+        if optimize_L2_case:
             for lambda_m in node.lambda_out:
                 best_lambdas_out[node.name][lambda_m] = node.lambda_out[lambda_m]
+            for lambda_m in node.lambda_in:
+                best_lambdas_in[node.name][lambda_m][:,:,idx] = node.lambda_in[lambda_m][:,:,idx]
 
 def update_best_beta(self: 'BoundedModule', enable_opt_interm_bounds, betas,
                      best_betas, idx):
@@ -345,10 +344,9 @@ def _get_optimized_bounds(
 
     opts = self.bound_opts['optimize_bound_args']
     iteration = opts['iteration']
-    max_time = opts['max_time']
     beta = opts['enable_beta_crown']
     alpha = opts['enable_alpha_crown']
-    enable_SDP_crown = opts['enable_SDP_crown']
+    optimize_L2_case = opts['enable_SDP_crown']
     apply_output_constraints_to = opts['apply_output_constraints_to']
     opt_choice = opts['optimizer']
     keep_best = opts['keep_best']
@@ -377,32 +375,23 @@ def _get_optimized_bounds(
     if C is not None:
         self.final_shape = C.size()[:2]
         self.bound_opts.update({'final_shape': self.final_shape})
-    # # For L2 norm perturbation case, we require the input bound for the final node
-    # # to calculate the perturbation for the last activation layer.
     if opts['init_alpha']:
         # TODO: this should set up aux_reference_bounds.
         self.init_alpha(x, share_alphas=opts['use_shared_alpha'],
                         method=method, c=C, final_node_name=final_node_name)
 
-    # For L2 norm perturbation, we use the interval propagate
-    # to calculate the perturbation for intermediate layers first.
-    if enable_SDP_crown:
-        init_intermediate_L2_perturbation(self)
-
     optimizable_activations = self.get_enabled_opt_act()
 
     alphas, parameters = [], []
-    lambdas_out, best_lambdas_out = [], []
+    lambdas_out, best_lambdas_out, lambdas_in, best_lambdas_in = [], [], [], []
     dense_coeffs_mask = []
-    lr_set = [opts['lr_alpha'], opts['lr_lambda_out']]
     if alpha:
         best_alphas = _set_alpha(
             optimizable_activations, parameters, alphas, opts['lr_alpha'])
     else:
         best_alphas = None
-    if enable_SDP_crown:
-        best_lambdas_out = _set_L2_optimizable_variables(
-            optimizable_activations, parameters, lambdas_out, opts['lr_lambda_out'])
+    if optimize_L2_case:
+        best_lambdas_out, best_lambdas_in = _set_L2_optimizable_variables(optimizable_activations, parameters, lambdas_out, lambdas_in, opts['lr_lambda_out'], opts['lr_lambda_in'])
     else:
         best_lambdas_out = None
     if beta:
@@ -475,10 +464,8 @@ def _get_optimized_bounds(
             apply_output_constraints_to
         )
 
-    compare_L2_result = False
     need_grad = True
     patience = 0
-    ret_0 = None
     for i in range(iteration):
         if cutter:
             # cuts may be optimized by cutter
@@ -594,8 +581,6 @@ def _get_optimized_bounds(
             ret_0 = ret[0].detach().clone() if bound_lower else ret[1].detach().clone()
 
             for node in optimizable_activations:
-                if node.inputs[0].lower is None and node.inputs[0].upper is None:
-                    continue
                 new_intermediate = [node.inputs[0].lower.detach().clone(),
                                     node.inputs[0].upper.detach().clone()]
                 best_intermediate_bounds[node.name] = new_intermediate
@@ -621,7 +606,7 @@ def _get_optimized_bounds(
             (x, C, full_l, full_ret_l, full_ret_u,
              full_ret, stop_criterion) = pruner.prune(
                 x, C, ret_l, ret_u, ret, full_l, full_ret_l, full_ret_u,
-                full_ret, interm_bounds, aux_reference_bounds, reference_bounds,
+                full_ret, interm_bounds, aux_reference_bounds,
                 stop_criterion_func, bound_lower)
         else:
             stop_criterion = (stop_criterion_func(full_ret_l) if bound_lower
@@ -662,7 +647,6 @@ def _get_optimized_bounds(
             # for lb and ub, we update them in every iteration since updating
             # them is cheap
             need_update = False
-            improved_idx = None
             if keep_best:
                 if best_ret_u is not None:
                     best_ret_u, best_ret, need_update, idx_mask, improved_idx = _update_best_ret(
@@ -687,22 +671,18 @@ def _get_optimized_bounds(
             else:
                 patience += 1
 
-            time_spent = time.time() - start
-
             # Save variables if this is the best iteration.
             # To save computational cost, we only check keep_best at the first
             # (in case divergence) and second half iterations
             # or before early stop by either stop_criterion or
             # early_stop_patience reached
             if (i < 1 or i > int(iteration * start_save_best) or deterministic
-                    or stop_criterion_final or patience == early_stop_patience
-                    or time_spent > max_time):
+                    or stop_criterion_final or patience == early_stop_patience):
 
                 # compare with the first iteration results and get improved indexes
                 if bound_lower:
                     if deterministic:
                         idx = improved_idx
-                        idx_mask = None
                     else:
                         idx_mask, idx = _get_idx_mask(
                             0, full_ret_l, ret_0, loss_reduction_func)
@@ -710,7 +690,6 @@ def _get_optimized_bounds(
                 else:
                     if deterministic:
                         idx = improved_idx
-                        idx_mask = None
                     else:
                         idx_mask, idx = _get_idx_mask(
                             1, full_ret_u, ret_0, loss_reduction_func)
@@ -727,12 +706,12 @@ def _get_optimized_bounds(
                     _update_optimizable_activations(
                         optimizable_activations, interm_bounds,
                         fix_interm_bounds, best_intermediate_bounds,
-                        reference_idx, idx, alpha, best_alphas,
-                        enable_SDP_crown, best_lambdas_out, deterministic)
-
+                        reference_idx, idx, alpha, best_alphas, optimize_L2_case, best_lambdas_out, best_lambdas_in, deterministic)
+                        
                     if beta:
                         self.update_best_beta(enable_opt_interm_bounds, betas,
                                               best_betas, idx)
+
 
         if os.environ.get('AUTOLIRPA_DEBUG_OPT', False):
             print(f'****** iter [{i}]',
@@ -745,23 +724,21 @@ def _get_optimized_bounds(
             break
 
         if patience > early_stop_patience:
-            if enable_SDP_crown and not compare_L2_result:
-                compare_L2_result = True
-                for node in optimizable_activations:
-                    node.L2_stage = 'compare'
-                for index, param_group in enumerate(opt.param_groups):
-                    param_group['lr'] = lr_set[index]
-                patience = 0
-                print(f'Reoptimize at {i}th iter due to {early_stop_patience}'
-                    ' iterations no improvement!')
-                continue
-            print(f'Early stop at {i}th iter due to {early_stop_patience}'
-                  ' iterations no improvement!')
-            break
-
-        if time_spent > max_time:
-            print(f'Early stop at {i}th iter due to exceeding the time limit '
-                  f'for the optimization (time spent: {time_spent})')
+            # if optimize_L2_case and not compare_L2_result:
+            #     compare_L2_result = True
+            #     for node in optimizable_activations:
+            #         node.L2_stage = 'compare'
+            #     for index, param_group in enumerate(opt.param_groups):
+            #         param_group['lr'] = lr_set[index]
+            #     patience = 0
+            #     print(f'Reoptimize at {i}th iter due to {early_stop_patience}'
+            #         ' iterations no improvement!')
+            #     continue
+            # print(f'Early stop at {i}th iter due to {early_stop_patience}'
+            #     ' iterations no improvement!')
+            logger.debug(
+                f'Early stop at {i}th iter due to {early_stop_patience}'
+                ' iterations no improvement!')
             break
 
         if i != iteration - 1 and not loss.requires_grad:
@@ -787,7 +764,6 @@ def _get_optimized_bounds(
             # we do not need to update parameters in the last step since the
             # best result already obtained
             loss.backward()
-
             # All intermediate variables are not needed at this point.
             self._clear_and_set_new(
                 None,
@@ -806,18 +782,13 @@ def _get_optimized_bounds(
                 coeffs[dmi].data = (
                     dense_coeffs_mask[dmi].float() * coeffs[dmi].data)
 
-        ### preprocessor-hint: private-section-start
-        # Possibly update cuts if they are parameterized and optimzied
-        if self.cut_used:
-            cutter.update_cuts()
-        ### preprocessor-hint: private-section-end
 
         if alpha:
             for m in optimizable_activations:
                 m.clip_alpha()
-        if enable_SDP_crown:
+        if optimize_L2_case:
             for m in optimizable_activations:
-                m.clip_lambda()
+                m.clip_L2_variables()
         if apply_output_constraints_to is not None and len(apply_output_constraints_to) > 0:
             for m in self.nodes():
                 m.clip_gammas()
@@ -832,18 +803,27 @@ def _get_optimized_bounds(
 
     if verbosity > 3:
         breakpoint()
-
+        
     if keep_best:
         # Set all variables to their saved best values.
         with torch.no_grad():
             for idx, node in enumerate(optimizable_activations):
-                if node.name not in best_intermediate_bounds:
-                    continue
                 if alpha:
                     # Assigns a new dictionary.
                     node.alpha = best_alphas[node.name]
-                if enable_SDP_crown:
+                if optimize_L2_case:
                     node.lambda_out = best_lambdas_out[node.name]
+                    node.lambda_in = best_lambdas_in[node.name]
+                    # if bound_side == 'lower':
+                    #     index = 0
+                    # else:
+                    #     index = 1
+                    # for tensor, init in zip(node.lambda_.items(), node.init_lambda.items()):
+                    #     key, tensor = tensor
+                    #     key, init = init
+                    #     count = (tensor[index] == init[index]).sum().item()
+                    #     numbers = torch.numel(tensor[index])
+                    #     print('node_name: {}, key: {}, key_num: {}, {} not optimized'.format(node.name, key, numbers, count))
                 # Update best intermediate layer bounds only when they are
                 # optimized. If they are already fixed in
                 # interm_bounds, then do nothing.
@@ -885,7 +865,10 @@ def _get_optimized_bounds(
 
     for node in optimizable_activations:
         node.opt_end()
-
+        self.h_number[node.name] = node.h_number
+        self.h_optimize_number[node.name] = node.optimize_h_number
+        self.h_value[node.name] = node.h_mean
+        self.h_optimize_value[node.name] = node.optimized_h_mean
     if pruner:
         pruner.update_ratio(full_l, full_ret_l)
         pruner.clean_full_sized_alpha_cache()
@@ -951,7 +934,6 @@ def init_alpha(self: 'BoundedModule', x, share_alphas=False, method='backward',
         # this set the "perturbed" property
         self.set_input(*x, interm_bounds=interm_bounds)
         self.backward_from = {node: [final] for node in self._modules}
-        l = u = None
 
     final_node_name = final_node_name or self.final_name
 
@@ -967,8 +949,6 @@ def init_alpha(self: 'BoundedModule', x, share_alphas=False, method='backward',
                 share_alphas=share_alphas,
                 final_node_name=final_node_name,
             )
-        if not start_nodes:
-            continue
         if skipped:
             node.restore_optimized_params(activation_opt_params[node.name])
         else:
@@ -976,9 +956,7 @@ def init_alpha(self: 'BoundedModule', x, share_alphas=False, method='backward',
         if node in self.splittable_activations:
             for i in node.requires_input_bounds:
                 input_node = node.inputs[i]
-                if (not input_node.perturbed
-                        or node.inputs[i].lower is None
-                        and node.inputs[i].upper is None):
+                if not input_node.perturbed:
                     continue
                 init_intermediate_bounds[node.inputs[i].name] = (
                     [node.inputs[i].lower.detach(),
@@ -1013,26 +991,3 @@ def init_alpha(self: 'BoundedModule', x, share_alphas=False, method='backward',
         return init_intermediate_bounds
     else:
         return l, u, init_intermediate_bounds
-
-# Calculate the L2 norm pertubation radius for intermediate layers
-# to enable the SDP-CROWN.
-def init_intermediate_L2_perturbation(module: 'BoundedModule'):
-    for node in module.nodes():
-    # The input node doesn't involve in the propagation.
-        if isinstance(node, BoundInput):
-            continue
-        inp = [n_pre.interval for n_pre in node.inputs]
-        # Only calculate for the perturbed nodes.
-        if node.perturbed and hasattr(node, 'output_rho'):
-            if hasattr(node, 'interval_propagate'):
-                ret = node.interval_propagate(*inp)
-                node.interval = ret
-            # Only recalculate the radius for Linear and convolutional layers.
-            if not isinstance(node, (BoundLinear, BoundConv)):
-                for input_node in node.inputs:
-                    if hasattr(input_node, 'output_rho') and input_node.output_rho is not None:
-                        node.input_rho = input_node.output_rho
-                        node.output_rho = input_node.output_rho
-                        break
-    return
-    

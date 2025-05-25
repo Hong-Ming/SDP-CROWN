@@ -3,10 +3,10 @@
 ##   α,β-CROWN (alpha-beta-CROWN) neural network verifier developed    ##
 ##   by the α,β-CROWN Team                                             ##
 ##                                                                     ##
-##   Copyright (C) 2020-2025 The α,β-CROWN Team                        ##
-##   Primary contacts: Huan Zhang <huan@huan-zhang.com> (UIUC)         ##
-##                     Zhouxing Shi <zshi@cs.ucla.edu> (UCLA)          ##
-##                     Xiangru Zhong <xiangru4@illinois.edu> (UIUC)    ##
+##   Copyright (C) 2020-2024 The α,β-CROWN Team                        ##
+##   Primary contacts: Huan Zhang <huan@huan-zhang.com>                ##
+##                     Zhouxing Shi <zshi@cs.ucla.edu>                 ##
+##                     Kaidi Xu <kx46@drexel.edu>                      ##
 ##                                                                     ##
 ##    See CONTRIBUTORS for all author contacts and affiliations.       ##
 ##                                                                     ##
@@ -51,20 +51,39 @@ class BoundConv(Bound):
             self.has_bias = False
         self.relu_followed = False
         self.patches_start = True
-        if options is None:
-            options = {}
         self.mode = options.get("conv_mode", "matrix")
         # denote whether this Conv is followed by a ReLU
         # if self.relu_followed is False, we need to manually pad the conv patches.
         # If self.relu_followed is True, the patches are padded in the ReLU layer
         # and the manual padding is not needed.
 
-    def forward(self, *x):
+    def forward(self, *x, rho=None):
         # x[0]: input, x[1]: weight, x[2]: bias if self.has_bias
         bias = x[2] if self.has_bias else None
-
         output = self.F_conv(x[0], x[1], bias, self.stride, self.padding, self.dilation, self.groups)
+        def power_iteration(weight, input_shape, bias=None, num_iterations=100):
+            """Calculate the Lipschitz constant of a convolutional layer using Power Iteration."""
+            with torch.no_grad():
+                x_k = torch.randn(input_shape).to(weight.device)
+                x_k = x_k / torch.norm(x_k)
 
+                for _ in range(num_iterations):
+                    x_k1 = F.conv2d(x_k, weight, bias, self.stride, self.padding, self.dilation, self.groups)
+                    conv_norm = torch.norm(x_k1)
+                    x_k1 = x_k1 / conv_norm
+                    x_k1 = F.conv_transpose2d(x_k1, weight, bias=None, stride=self.stride,
+                                            padding=self.padding, dilation=self.dilation, 
+                                            groups=self.groups)
+                    deconv_norm = torch.norm(x_k1)
+                    x_k = x_k1 / deconv_norm
+                # The largest singular value (Lipschitz constant) is based on the last computed norm before normalization
+                sigma = conv_norm
+            return sigma.item()
+        if rho is not None:
+            with torch.no_grad():
+                spectral_norm = power_iteration(x[1], x[0].shape, bias) 
+                self.rho = rho
+            return output, rho*spectral_norm
         return output
 
     def bound_backward(self, last_lA, last_uA, *x, **kwargs):
@@ -91,7 +110,7 @@ class BoundConv(Bound):
                         self.padding[0] - 1 - (int(weight.size()[2] - 1) * self.dilation[0]))
                     output_padding1 = (
                         int(self.input_shape[3]) - (int(self.output_shape[3]) - 1) * self.stride[1] + 2 *
-                        self.padding[1] - 1 - (int(weight.size()[3] - 1) * self.dilation[1]))
+                        self.padding[1] - 1 - (int(weight.size()[3] - 1) * self.dilation[0]))
                     next_A = F.conv_transpose2d(
                         last_A.reshape(shape[0] * shape[1], *shape[2:]), weight, None,
                         stride=self.stride, padding=self.padding, dilation=self.dilation,
@@ -366,7 +385,6 @@ class BoundConv(Bound):
         h_L, h_U = v[0]
         weight = v[1][0]
         bias = v[2][0] if self.has_bias else None
-        eps = None
 
         if norm == torch.inf:
             mid = (h_U + h_L) / 2.0
@@ -400,39 +418,6 @@ class BoundConv(Bound):
 
         upper = center + deviation
         lower = center - deviation
-
-        # Set up the L2 norm perturbation for intermediate layers.
-        input_L2_perturabtion = None
-        batches = center.shape[0]
-        # Skip the perturbation for final node.
-        if self is not None and not self.is_final_node:
-            with torch.no_grad():
-                if norm == 2.0:
-                    input_L2_perturabtion = torch.tensor([eps]*batches).detach().to(center.device)
-                else:
-                    for input_node in self.inputs:
-                        if hasattr(input_node, 'output_rho') and input_node.output_rho is not None:
-                            input_L2_perturabtion = input_node.output_rho
-                            break
-                if input_L2_perturabtion is not None:
-                    self.input_rho = input_L2_perturabtion.detach()
-                    self.output_rho = self.input_rho * power_iteration(weight=weight, input_shape=h_U.shape, output_shape=upper.shape,
-                                                    stride=self.stride, padding=self.padding, 
-                                                    dilation=self.dilation, groups=self.groups, 
-                                                    ).detach()
-                    # cur_diag = deviation
-                    # if eps is not None:
-                    #     # Special case for the first layer.
-                    #     # output_rho = input_rho * |diag(cur_L_inf_rho)^(-1) * W|_2
-                    #     pre_diag = torch.ones_like(h_U)*eps
-                    # else:
-                    #     # output_rho = input_rho * |diag(cur_L_inf_rho)^(-1) * W * diag(pre_L_inf_rho)^(-1)|_2
-                    #     pre_diag = (h_U - h_L) / 2.0
-                    # self.output_rho = self.input_rho * power_iteration_operator(pre_diag=pre_diag, cur_diag=cur_diag,  
-                    #                                                         output_shape=upper.shape, weight=weight, input_shape=h_U.shape, 
-                    #                                                         stride=self.stride, padding=self.padding, 
-                    #                                                         dilation=self.dilation, groups=self.groups, 
-                    #                                                         ).detach()
         return lower, upper
 
     def bound_dynamic_forward(self, *x, max_dim=None, offset=0):
