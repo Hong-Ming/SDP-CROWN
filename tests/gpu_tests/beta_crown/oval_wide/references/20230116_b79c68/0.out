@@ -1,0 +1,326 @@
+Configurations:
+
+general:
+  device: cuda
+  seed: 100
+  conv_mode: patches
+  deterministic: false
+  double_fp: false
+  loss_reduction_func: sum
+  sparse_alpha: true
+  save_adv_example: false
+  precompile_jit: false
+  complete_verifier: bab
+  enable_incomplete_verification: false
+  csv_name: null
+  results_file: out.txt
+  root_path: ''
+model:
+  name: cifar_model_wide
+  path: cifar_wide.pth
+  onnx_path: null
+  onnx_path_prefix: ''
+  cache_onnx_conversion: false
+  onnx_quirks: null
+  input_shape: null
+  onnx_loader: default_onnx_and_vnnlib_loader
+  onnx_optimization_flags: none
+data:
+  start: 0
+  end: 1
+  select_instance: null
+  num_outputs: 10
+  mean: [0.485, 0.456, 0.406]
+  std: [0.225, 0.225, 0.225]
+  pkl_path: wide_100.pkl
+  dataset: CIFAR
+  data_filter_path: null
+  data_idx_file: null
+specification:
+  type: lp
+  robustness_type: specify-target
+  norm: .inf
+  epsilon: null
+  vnnlib_path: null
+  vnnlib_path_prefix: ''
+solver:
+  batch_size: 1024
+  min_batch_size_ratio: 0.1
+  use_float64_in_last_iteration: false
+  early_stop_patience: 10
+  start_save_best: 0.5
+  bound_prop_method: alpha-crown
+  init_bound_prop_method: same
+  prune_after_crown: false
+  crown:
+    batch_size: 1000000000
+    max_crown_size: 1000000000
+  alpha-crown:
+    alpha: true
+    lr_alpha: 0.1
+    iteration: 100
+    share_slopes: false
+    no_joint_opt: false
+    lr_decay: 0.98
+    full_conv_alpha: true
+  beta-crown:
+    lr_alpha: 0.01
+    lr_beta: 0.05
+    lr_decay: 0.98
+    optimizer: adam
+    iteration: 20
+    beta: true
+    beta_warmup: true
+    enable_opt_interm_bounds: false
+    all_node_split_LP: false
+  forward:
+    refine: false
+    dynamic: false
+    max_dim: 10000
+  intermediate_refinement:
+    enabled: false
+    batch_size: 10
+    opt_coeffs: false
+    opt_bias: false
+    lr: 0.05
+    layers: [-1]
+    max_domains: 1000
+  multi_class:
+    label_batch_size: 32
+    skip_with_refined_bound: true
+  mip:
+    parallel_solvers: null
+    solver_threads: 1
+    refine_neuron_timeout: 15
+    refine_neuron_time_percentage: 0.8
+    early_stop: true
+    adv_warmup: true
+    mip_solver: gurobi
+bab:
+  initial_max_domains: 1
+  max_domains: .inf
+  decision_thresh: 0
+  timeout: 30
+  timeout_scale: 1
+  override_timeout: null
+  get_upper_bound: false
+  dfs_percent: 0.0
+  pruning_in_iteration: true
+  pruning_in_iteration_ratio: 0.2
+  sort_targets: false
+  batched_domain_list: true
+  optimized_intermediate_layers: ''
+  interm_transfer: true
+  cut:
+    enabled: false
+    bab_cut: false
+    lp_cut: false
+    method: null
+    lr: 0.01
+    lr_decay: 1.0
+    iteration: 100
+    bab_iteration: -1
+    early_stop_patience: -1
+    lr_beta: 0.02
+    number_cuts: 50
+    topk_cuts_in_filter: 100
+    batch_size_primal: 100
+    max_num: 1000000000
+    patches_cut: false
+    cplex_cuts: false
+    cplex_cuts_wait: 0
+    cplex_cuts_revpickup: true
+    cut_reference_bounds: true
+    fix_intermediate_bounds: false
+    _tmp_cuts: null
+    fixed_cuts: false
+    add_implied_cuts: false
+    add_input_cuts: false
+  branching:
+    method: fsb
+    candidates: 1
+    reduceop: min
+    sb_coeff_thresh: 0.001
+    branching_input_and_activation: false
+    branching_input_and_activation_order: [input, relu]
+    branching_input_iterations: 30
+    branching_relu_iterations: 50
+    sort_domain_interval: -1
+    input_split:
+      enable: false
+      enhanced_bound_prop_method: alpha-crown
+      enhanced_branching_method: naive
+      enhanced_bound_patience: 100000000.0
+      attack_patience: 100000000.0
+      adv_check: 0
+  attack:
+    enabled: false
+    beam_candidates: 8
+    beam_depth: 7
+    max_dive_fix_ratio: 0.8
+    min_local_free_ratio: 0.2
+    mip_start_iteration: 5
+    mip_timeout: 30.0
+    adv_pool_threshold: null
+    refined_mip_attacker: false
+    refined_batch_size: null
+attack:
+  pgd_order: skip
+  pgd_steps: 100
+  pgd_restarts: 30
+  pgd_early_stop: true
+  pgd_lr_decay: 0.99
+  pgd_alpha: auto
+  pgd_loss_mode: null
+  enable_mip_attack: false
+  cex_path: ./test_cex.txt
+  attack_mode: PGD
+  gama_lambda: 10.0
+  gama_decay: 0.9
+  check_clean: false
+  input_split:
+    pgd_steps: 100
+    pgd_restarts: 30
+    pgd_alpha: auto
+  input_split_enhanced:
+    pgd_steps: 200
+    pgd_restarts: 5000000
+    pgd_alpha: auto
+  input_split_check_adv:
+    pgd_steps: 5
+    pgd_restarts: 5
+    pgd_alpha: auto
+debug:
+  lp_test: null
+
+Experiments at Mon Jan 16 02:36:36 2023 on diablo.cs.ucla.edu
+Sequential(
+  (0): Conv2d(3, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+  (1): ReLU()
+  (2): Conv2d(16, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+  (3): ReLU()
+  (4): Flatten()
+  (5): Linear(in_features=2048, out_features=100, bias=True)
+  (6): ReLU()
+  (7): Linear(in_features=100, out_features=10, bias=True)
+)
+No epsilon defined!
+Files already downloaded and verified
+Overwrite epsilon that saved in .pkl file, they should be after normalized!
+Internal results will be saved to Verified_ret_[cifar_model_wide]_start=0_end=1_iter=20_b=1024_timeout=30_branching=fsb-min-1_lra-init=0.1_lra=0.01_lrb=0.05_PGD=skip_cplex_cuts=False.npy.
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 0, vnnlib ID: 0 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Total VNNLIB file length: 1, max property batch size: 1, total number of batches: 1
+
+Properties batch 0, size 1
+Remaining timeout: 27.99388575553894
+##### Instance 0 first 10 spec matrices: [[[-1.  0.  0.  0.  0.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Model prediction is: tensor([-0.26283619, -1.79466105,  0.92987883,  0.43162179,  1.08514738,
+        -0.04146609,  2.40101671,  0.07541341, -2.04133391, -0.78272510],
+       device='cuda:0')
+layer /input.4 using sparse-features alpha with shape [1069]; unstable size 1069; total size 4096 (torch.Size([1, 16, 16, 16]))
+layer /input.4 start_node /input.8 using sparse-spec alpha with unstable size 385 total_size 2048 output_shape (32, 8, 8)
+layer /input.4 start_node /input.12 using sparse-spec alpha with unstable size 43 total_size 100 output_shape torch.Size([100])
+layer /input.4 start_node /23 using full alpha with unstable size None total_size 1 output_shape 1
+layer /12 using sparse-features alpha with shape [385]; unstable size 385; total size 2048 (torch.Size([1, 32, 8, 8]))
+layer /12 start_node /input.12 using sparse-spec alpha with unstable size 43 total_size 100 output_shape torch.Size([100])
+layer /12 start_node /23 using full alpha with unstable size None total_size 1 output_shape 1
+layer /22 using sparse-features alpha with shape [43]; unstable size 43; total size 100 (torch.Size([1, 100]))
+layer /22 start_node /23 using full alpha with unstable size None total_size 1 output_shape 1
+Optimizable variables initialized.
+initial CROWN bounds: tensor([[-1.05921614]], device='cuda:0') None
+best_l after optimization: -0.7608987092971802 with beta sum per layer: []
+alpha/beta optimization time: 5.330341577529907
+initial alpha-CROWN bounds: tensor([[-0.76089871]], device='cuda:0')
+Worst class: (+ rhs) -0.7608987092971802
+Keeping slopes for these layers: ['/23']
+layer 0 name BoundConv(name="/input") size torch.Size([4096]) unstable 1069
+layer 1 name BoundConv(name="/input.8") size torch.Size([2048]) unstable 369
+layer 2 name BoundLinear(name="/input.12") size torch.Size([100]) unstable 42
+-----------------
+# of unstable neurons: 1480
+-----------------
+
+batch:  torch.Size([1, 16, 16, 16]) pre split depth:  6
+post split depth:  6
+splitting decisions: 
+split level 0: [2, 31] 
+split level 1: [2, 6] 
+split level 2: [2, 83] 
+split level 3: [2, 58] 
+split level 4: [2, 10] 
+split level 5: [2, 45] 
+best_l after optimization: 33.02864074707031 with beta sum per layer: [0.0, 0.0, 2.229355812072754]
+alpha/beta optimization time: 0.43053197860717773
+pruning_in_iteration open status: True
+ratio of positive domain = 59 / 64 = 0.921875
+pruning-in-iteration extra time: 0.01172947883605957
+Time: prepare 0.0062    beta_bound 0.4309    bound 0.4309    transfer 0.0010    finalize 0.0052    func 0.4435    
+Accumulated time: func 0.4435    prepare 0.0142    bound 0.4309    beta_bound 0.4309    transfer 0.0010    finalize 0.0052    
+batch bounding time:  0.4436349868774414
+Current worst splitting domains lb-rhs (depth):
+-0.30653 (6), -0.18730 (6), -0.13371 (6), -0.10901 (6), -0.08896 (6), 
+length of domains: 5
+Time: pickout 0.0011    decision 0.0750    solve 0.4498    add 0.0025    
+Accumulated time: pickout 0.0011    decision 0.0750    solve 0.4498    add 0.0025    
+Current (lb-rhs): -0.30652785301208496
+5 domains visited
+Cumulative time: 7.648203611373901
+
+batch:  torch.Size([5, 16, 16, 16]) pre split depth:  4
+post split depth:  4
+splitting decisions: 
+split level 0: [2, 98] [2, 98] [2, 98] [2, 98] [2, 98] 
+split level 1: [2, 89] [2, 89] [2, 89] [2, 89] [2, 89] 
+split level 2: [2, 23] [2, 23] [2, 23] [2, 23] [2, 23] 
+split level 3: [2, 22] [2, 22] [2, 22] [2, 22] [2, 22] 
+best_l after optimization: 12.12472915649414 with beta sum per layer: [0.0, 0.0, 36.9152717590332]
+alpha/beta optimization time: 0.22643160820007324
+pruning_in_iteration open status: True
+ratio of positive domain = 76 / 80 = 0.95
+pruning-in-iteration extra time: 0.011580467224121094
+Time: prepare 0.0078    beta_bound 0.2267    bound 0.2268    transfer 0.0007    finalize 0.0056    func 0.2410    
+Accumulated time: func 0.6846    prepare 0.0274    bound 0.6577    beta_bound 0.6576    transfer 0.0018    finalize 0.0109    
+batch bounding time:  0.2411341667175293
+Current worst splitting domains lb-rhs (depth):
+-0.07469 (10), -0.02490 (10), -0.01495 (10), -0.01432 (10), 
+length of domains: 4
+Time: pickout 0.0009    decision 0.0571    solve 0.2481    add 0.0023    
+Accumulated time: pickout 0.0020    decision 0.1321    solve 0.6979    add 0.0048    
+Current (lb-rhs): -0.07468867301940918
+9 domains visited
+Cumulative time: 7.956857442855835
+
+batch:  torch.Size([4, 16, 16, 16]) pre split depth:  4
+post split depth:  4
+splitting decisions: 
+split level 0: [2, 40] [2, 40] [2, 40] [2, 40] 
+split level 1: [2, 42] [2, 42] [2, 42] [2, 42] 
+split level 2: [2, 92] [2, 92] [2, 92] [2, 92] 
+split level 3: [1, 1253] [2, 3] [1, 421] [2, 3] 
+
+all verified at 0th iter
+best_l after optimization: 13.522087097167969 with beta sum per layer: [0.0, 0.0, 19.929302215576172]
+alpha/beta optimization time: 0.006534099578857422
+pruning_in_iteration open status: False
+ratio of positive domain = 64 / 64 = 1.0
+pruning-in-iteration extra time: 0.00010061264038085938
+Time: prepare 0.0069    beta_bound 0.0068    bound 0.0069    transfer 0.0005    finalize 0.0050    func 0.0193    
+Accumulated time: func 0.7039    prepare 0.0396    bound 0.6646    beta_bound 0.6644    transfer 0.0022    finalize 0.0159    
+batch bounding time:  0.019347667694091797
+length of domains: 0
+Time: pickout 0.0009    decision 0.0552    solve 0.0249    add 0.0012    
+Accumulated time: pickout 0.0028    decision 0.1872    solve 0.7228    add 0.0060    
+No domains left, verification finished!
+Current (lb-rhs): 1.0000000116860974e-07
+9 domains visited
+Cumulative time: 8.039278268814087
+
+Result: safe in 10.5604 seconds
+############# Summary #############
+Final verified acc: 100.0% (total 1 examples)
+Problem instances count: 1 , total verified (safe/unsat): 1 , total falsified (unsafe/sat): 0 , timeout: 0
+mean time for ALL instances (total 1):10.560306803853347, max time: 10.560412406921387
+mean time for verified SAFE instances(total 1): 10.560412406921387, max time: 10.560412406921387
+safe (total 1), index: [0]

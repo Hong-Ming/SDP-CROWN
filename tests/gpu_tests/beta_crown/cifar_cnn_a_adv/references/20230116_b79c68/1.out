@@ -1,0 +1,721 @@
+Configurations:
+
+general:
+  device: cuda
+  seed: 100
+  conv_mode: patches
+  deterministic: false
+  double_fp: false
+  loss_reduction_func: sum
+  sparse_alpha: true
+  save_adv_example: false
+  precompile_jit: false
+  complete_verifier: bab
+  enable_incomplete_verification: true
+  csv_name: null
+  results_file: out.txt
+  root_path: ''
+model:
+  name: cnn_4layer_adv
+  path: cifar_cnn_a_adv.model
+  onnx_path: null
+  onnx_path_prefix: ''
+  cache_onnx_conversion: false
+  onnx_quirks: null
+  input_shape: null
+  onnx_loader: default_onnx_and_vnnlib_loader
+  onnx_optimization_flags: none
+data:
+  start: 42
+  end: 43
+  select_instance: null
+  num_outputs: 10
+  mean: 0.0
+  std: 1.0
+  pkl_path: null
+  dataset: CIFAR_SDP
+  data_filter_path: null
+  data_idx_file: null
+specification:
+  type: lp
+  robustness_type: verified-acc
+  norm: .inf
+  epsilon: 0.00784313725
+  vnnlib_path: null
+  vnnlib_path_prefix: ''
+solver:
+  batch_size: 4096
+  min_batch_size_ratio: 0.1
+  use_float64_in_last_iteration: false
+  early_stop_patience: 10
+  start_save_best: 0.5
+  bound_prop_method: alpha-crown
+  init_bound_prop_method: same
+  prune_after_crown: false
+  crown:
+    batch_size: 1000000000
+    max_crown_size: 1000000000
+  alpha-crown:
+    alpha: true
+    lr_alpha: 0.1
+    iteration: 100
+    share_slopes: false
+    no_joint_opt: false
+    lr_decay: 0.98
+    full_conv_alpha: true
+  beta-crown:
+    lr_alpha: 0.01
+    lr_beta: 0.05
+    lr_decay: 0.98
+    optimizer: adam
+    iteration: 20
+    beta: true
+    beta_warmup: true
+    enable_opt_interm_bounds: false
+    all_node_split_LP: false
+  forward:
+    refine: false
+    dynamic: false
+    max_dim: 10000
+  intermediate_refinement:
+    enabled: false
+    batch_size: 10
+    opt_coeffs: false
+    opt_bias: false
+    lr: 0.05
+    layers: [-1]
+    max_domains: 1000
+  multi_class:
+    label_batch_size: 32
+    skip_with_refined_bound: true
+  mip:
+    parallel_solvers: null
+    solver_threads: 1
+    refine_neuron_timeout: 15
+    refine_neuron_time_percentage: 0.8
+    early_stop: true
+    adv_warmup: true
+    mip_solver: gurobi
+bab:
+  initial_max_domains: 1
+  max_domains: .inf
+  decision_thresh: 0
+  timeout: 90.0
+  timeout_scale: 1
+  override_timeout: null
+  get_upper_bound: false
+  dfs_percent: 0.0
+  pruning_in_iteration: true
+  pruning_in_iteration_ratio: 0.2
+  sort_targets: false
+  batched_domain_list: true
+  optimized_intermediate_layers: ''
+  interm_transfer: true
+  cut:
+    enabled: false
+    bab_cut: false
+    lp_cut: false
+    method: null
+    lr: 0.01
+    lr_decay: 1.0
+    iteration: 100
+    bab_iteration: -1
+    early_stop_patience: -1
+    lr_beta: 0.02
+    number_cuts: 50
+    topk_cuts_in_filter: 100
+    batch_size_primal: 100
+    max_num: 1000000000
+    patches_cut: false
+    cplex_cuts: false
+    cplex_cuts_wait: 0
+    cplex_cuts_revpickup: true
+    cut_reference_bounds: true
+    fix_intermediate_bounds: false
+    _tmp_cuts: null
+    fixed_cuts: false
+    add_implied_cuts: false
+    add_input_cuts: false
+  branching:
+    method: kfsb
+    candidates: 3
+    reduceop: max
+    sb_coeff_thresh: 0.001
+    branching_input_and_activation: false
+    branching_input_and_activation_order: [input, relu]
+    branching_input_iterations: 30
+    branching_relu_iterations: 50
+    sort_domain_interval: -1
+    input_split:
+      enable: false
+      enhanced_bound_prop_method: alpha-crown
+      enhanced_branching_method: naive
+      enhanced_bound_patience: 100000000.0
+      attack_patience: 100000000.0
+      adv_check: 0
+  attack:
+    enabled: false
+    beam_candidates: 8
+    beam_depth: 7
+    max_dive_fix_ratio: 0.8
+    min_local_free_ratio: 0.2
+    mip_start_iteration: 5
+    mip_timeout: 30.0
+    adv_pool_threshold: null
+    refined_mip_attacker: false
+    refined_batch_size: null
+attack:
+  pgd_order: before
+  pgd_steps: 100
+  pgd_restarts: 50
+  pgd_early_stop: true
+  pgd_lr_decay: 0.99
+  pgd_alpha: auto
+  pgd_loss_mode: null
+  enable_mip_attack: false
+  cex_path: ./test_cex.txt
+  attack_mode: PGD
+  gama_lambda: 10.0
+  gama_decay: 0.9
+  check_clean: false
+  input_split:
+    pgd_steps: 100
+    pgd_restarts: 30
+    pgd_alpha: auto
+  input_split_enhanced:
+    pgd_steps: 200
+    pgd_restarts: 5000000
+    pgd_alpha: auto
+  input_split_check_adv:
+    pgd_steps: 5
+    pgd_restarts: 5
+    pgd_alpha: auto
+debug:
+  lp_test: null
+
+Experiments at Sun Jan 15 22:05:50 2023 on diablo.cs.ucla.edu
+Sequential(
+  (0): Conv2d(3, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+  (1): ReLU()
+  (2): Conv2d(16, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+  (3): ReLU()
+  (4): Flatten()
+  (5): Linear(in_features=2048, out_features=100, bias=True)
+  (6): ReLU()
+  (7): Linear(in_features=100, out_features=10, bias=True)
+)
+############################
+Sampled data loaded. Data already preprocessed!
+Shape: torch.Size([200, 3, 32, 32]) torch.Size([200]) torch.Size([200])
+X range: tensor(2.12560368) tensor(-1.98888886) tensor(-0.01308715)
+############################
+Internal results will be saved to Verified_ret_[cnn_4layer_adv]_start=42_end=43_iter=20_b=4096_timeout=90.0_branching=kfsb-max-3_lra-init=0.1_lra=0.01_lrb=0.05_PGD=before_cplex_cuts=False.npy.
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% idx: 0, vnnlib ID: 42 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Attack parameters: initialization=uniform, steps=100, restarts=50, alpha=0.008051544427871704, initialization=uniform, GAMA=False
+Model output of first 5 examples:
+ tensor([[-6.23515034, -9.22857857, -3.75808787, -3.27435422, -4.29405212,
+         -3.58545494, -2.41056538, -6.29414558, -6.66572857, -8.34386158]],
+       device='cuda:0')
+Adv example prediction (first 2 examples and 2 restarts):
+ tensor([[[-6.02119732, -9.07214546, -3.52987742, -2.82552576, -4.03900433,
+          -2.98739052, -2.62634277, -5.91915131, -6.30478573, -8.09517384],
+         [-6.02119732, -9.07214546, -3.52987742, -2.82552576, -4.03900433,
+          -2.98739052, -2.62634277, -5.91915131, -6.30478573, -8.09517384]]],
+       device='cuda:0')
+PGD attack margin (first 2 examles and 10 specs):
+ tensor([[[3.39485455, 6.44580269, 0.90353465, 0.19918299, 1.41266155,
+          0.36104774, 3.29280853, 3.67844296, 5.46883106]]], device='cuda:0')
+number of violation:  0
+Attack finished in 1.2741 seconds.
+PGD attack failed
+Model prediction is: tensor([[-6.23515034, -9.22857857, -3.75808787, -3.27435422, -4.29405212,
+         -3.58545494, -2.41056538, -6.29414558, -6.66572857, -8.34386158]],
+       device='cuda:0')
+layer /input.4 using sparse-features alpha with shape [590]; unstable size 590; total size 4096 (torch.Size([1, 16, 16, 16]))
+layer /input.4 start_node /input.8 using sparse-spec alpha with unstable size 244 total_size 2048 output_shape (32, 8, 8)
+layer /input.4 start_node /input.12 using sparse-spec alpha with unstable size 22 total_size 100 output_shape torch.Size([100])
+layer /input.4 start_node /23 using full alpha with unstable size None total_size 9 output_shape 9
+layer /12 using sparse-features alpha with shape [244]; unstable size 244; total size 2048 (torch.Size([1, 32, 8, 8]))
+layer /12 start_node /input.12 using sparse-spec alpha with unstable size 22 total_size 100 output_shape torch.Size([100])
+layer /12 start_node /23 using full alpha with unstable size None total_size 9 output_shape 9
+layer /22 using sparse-features alpha with shape [22]; unstable size 22; total size 100 (torch.Size([1, 100]))
+layer /22 start_node /23 using full alpha with unstable size None total_size 9 output_shape 9
+Optimizable variables initialized.
+initial CROWN bounds: tensor([[ 1.87620640,  4.30693674, -0.06645775, -0.26148707,  0.30728030,
+         -0.24854994,  2.13002706,  1.88156319,  3.71216321]], device='cuda:0') None
+best_l after optimization: 14.59441089630127 with beta sum per layer: []
+alpha/beta optimization time: 5.484003067016602
+initial alpha-CROWN bounds: tensor([[ 1.98166227,  4.46373320,  0.01903033, -0.21572876,  0.40182066,
+         -0.18405747,  2.22683096,  2.03213906,  3.86898041]], device='cuda:0')
+Worst class: (+ rhs) -0.215728759765625
+Total VNNLIB file length: 9, max property batch size: 1, total number of batches: 9
+lA shape: [torch.Size([1, 9, 16, 16, 16]), torch.Size([1, 9, 32, 8, 8]), torch.Size([1, 9, 100])]
+
+Properties batch 0, size 1
+Remaining timeout: 79.65416383743286
+##### Instance 0 first 10 spec matrices: [[[-1.  0.  0.  0.  0.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 1.9816622734069824.
+
+Properties batch 1, size 1
+Remaining timeout: 79.53631591796875
+##### Instance 0 first 10 spec matrices: [[[ 0. -1.  0.  0.  0.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 4.463733196258545.
+
+Properties batch 2, size 1
+Remaining timeout: 79.49504733085632
+##### Instance 0 first 10 spec matrices: [[[ 0.  0. -1.  0.  0.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 0.019030332565307617.
+
+Properties batch 3, size 1
+Remaining timeout: 79.45329999923706
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0. -1.  0.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Remaining spec index [0] with bounds tensor([[-0.21572876]], device='cuda:0') need to verify.
+Model prediction is: tensor([-6.23515034, -9.22857857, -3.75808787, -3.27435422, -4.29405212,
+        -3.58545494, -2.41056538, -6.29414558, -6.66572857, -8.34386158],
+       device='cuda:0')
+build_the_model_with_refined_bounds batch [0/1]
+setting alpha for layer /input.4 start_node /23 with alignment adjustment
+setting alpha for layer /12 start_node /23 with alignment adjustment
+setting alpha for layer /22 start_node /23 with alignment adjustment
+all slope initialized
+directly get lb and ub from refined bounds
+lA shapes: [torch.Size([1, 1, 16, 16, 16]), torch.Size([1, 1, 32, 8, 8]), torch.Size([1, 1, 100])]
+c shape: torch.Size([1, 1, 10])
+alpha-CROWN with fixed intermediate bounds: tensor([[-0.21572876]], device='cuda:0') tensor([[inf]], device='cuda:0')
+Keeping slopes for these layers: ['/23']
+Keeping slopes for these layers: ['/23']
+layer 0 name BoundConv(name="/input") size torch.Size([4096]) unstable 590
+layer 1 name BoundConv(name="/input.8") size torch.Size([2048]) unstable 242
+layer 2 name BoundLinear(name="/input.12") size torch.Size([100]) unstable 21
+-----------------
+# of unstable neurons: 853
+-----------------
+
+batch:  torch.Size([1, 16, 16, 16]) pre split depth:  8
+post split depth:  8
+splitting decisions: 
+split level 0: [2, 33] 
+split level 1: [2, 1] 
+split level 2: [2, 11] 
+split level 3: [2, 51] 
+split level 4: [2, 41] 
+split level 5: [2, 13] 
+split level 6: [2, 45] 
+split level 7: [2, 82] 
+pruning_in_iteration open status: True
+ratio of positive domain = 247 / 256 = 0.96484375
+pruning-in-iteration extra time: 0.011673927307128906
+Time: prepare 0.0205    beta_bound 0.6511    bound 0.6512    transfer 0.0011    finalize 0.0208    func 0.6938    
+Accumulated time: func 0.6938    prepare 0.0265    bound 0.6512    beta_bound 0.6511    transfer 0.0011    finalize 0.0208    
+batch bounding time:  0.6939408779144287
+Current worst splitting domains lb-rhs (depth):
+-0.09072 (8), -0.08847 (8), -0.04937 (8), -0.04912 (8), -0.03426 (8), -0.03200 (8), -0.02831 (8), -0.02388 (8), -0.00180 (8), 
+length of domains: 9
+Time: pickout 0.0010    decision 0.4435    solve 0.7173    add 0.0028    
+Accumulated time: pickout 0.0010    decision 0.4435    solve 0.7173    add 0.0028    
+Current (lb-rhs): -0.09072494506835938
+9 domains visited
+Cumulative time: 1.212019443511963
+
+batch:  torch.Size([9, 16, 16, 16]) pre split depth:  5
+post split depth:  5
+splitting decisions: 
+split level 0: [1, 850] [1, 850] [1, 850] [1, 1308] [1, 1308] [1, 1308] [1, 850] [1, 1308] [1, 1308] 
+split level 1: [1, 92] [1, 92] [1, 1308] [1, 1909] [1, 1909] [1, 92] [1, 92] [1, 1909] [1, 92] 
+split level 2: [1, 1909] [1, 1909] [1, 1909] [1, 92] [1, 483] [1, 1909] [1, 484] [1, 92] [1, 1909] 
+split level 3: [1, 484] [1, 484] [1, 483] [1, 483] [1, 94] [1, 483] [1, 654] [1, 483] [1, 483] 
+split level 4: [1, 654] [1, 654] [1, 94] [1, 94] [1, 484] [1, 94] [1, 878] [1, 94] [1, 94] 
+pruning_in_iteration open status: True
+ratio of positive domain = 198 / 288 = 0.6875
+pruning-in-iteration extra time: 0.011902570724487305
+Time: prepare 0.0258    beta_bound 0.2425    bound 0.2425    transfer 0.0011    finalize 0.0242    func 0.2938    
+Accumulated time: func 0.9876    prepare 0.0559    bound 0.8937    beta_bound 0.8936    transfer 0.0022    finalize 0.0450    
+batch bounding time:  0.2939424514770508
+Current worst splitting domains lb-rhs (depth):
+-0.06359 (13), -0.06049 (13), -0.06046 (13), -0.05931 (13), -0.05904 (13), -0.05801 (13), -0.05737 (13), -0.05729 (13), -0.05617 (13), -0.05613 (13), -0.05559 (13), -0.05524 (13), -0.05455 (13), -0.05439 (13), -0.05381 (13), -0.05327 (13), -0.05300 (13), -0.05183 (13), -0.05170 (13), -0.05125 (13), 
+length of domains: 90
+Time: pickout 0.0009    decision 0.0355    solve 0.3189    add 0.0045    
+Accumulated time: pickout 0.0019    decision 0.4790    solve 1.0362    add 0.0073    
+Current (lb-rhs): -0.06359326839447021
+99 domains visited
+Cumulative time: 1.5723950862884521
+
+batch:  torch.Size([90, 16, 16, 16]) pre split depth:  2
+post split depth:  2
+splitting decisions: 
+split level 0: [1, 92] [1, 850] [1, 654] [1, 92] [1, 850] [1, 654] [1, 654] [1, 92] [1, 850] [1, 654] 
+split level 1: [1, 484] [1, 92] [1, 878] [1, 484] [1, 92] [1, 1468] [1, 878] [1, 484] [1, 92] [1, 1468] 
+pruning_in_iteration open status: True
+ratio of positive domain = 115 / 360 = 0.3194444444444444
+pruning-in-iteration extra time: 0.01165318489074707
+Time: prepare 0.0319    beta_bound 0.2376    bound 0.2377    transfer 0.0013    finalize 0.0304    func 0.3014    
+Accumulated time: func 1.2890    prepare 0.0909    bound 1.1314    beta_bound 1.1312    transfer 0.0034    finalize 0.0754    
+batch bounding time:  0.3016624450683594
+Current worst splitting domains lb-rhs (depth):
+-0.05294 (15), -0.05214 (15), -0.05069 (15), -0.04960 (15), -0.04935 (15), -0.04875 (15), -0.04859 (15), -0.04841 (15), -0.04761 (15), -0.04740 (15), -0.04732 (15), -0.04596 (15), -0.04582 (15), -0.04568 (15), -0.04547 (15), -0.04505 (15), -0.04498 (15), -0.04474 (15), -0.04421 (15), -0.04369 (15), 
+length of domains: 245
+Time: pickout 0.0010    decision 0.0379    solve 0.3192    add 0.0060    
+Accumulated time: pickout 0.0030    decision 0.5169    solve 1.3554    add 0.0133    
+Current (lb-rhs): -0.05294233560562134
+344 domains visited
+Cumulative time: 1.9373786449432373
+
+batch:  torch.Size([245, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 979] [1, 654] [1, 979] [1, 654] [1, 979] [1, 654] [1, 979] [1, 654] [1, 979] [1, 654] 
+pruning_in_iteration open status: False
+ratio of positive domain = 60 / 490 = 0.12244897959183676
+pruning-in-iteration extra time: 0.00010824203491210938
+Time: prepare 0.0428    beta_bound 0.2261    bound 0.2261    transfer 0.0014    finalize 0.0425    func 0.3130    
+Accumulated time: func 1.6020    prepare 0.1380    bound 1.3575    beta_bound 1.3573    transfer 0.0048    finalize 0.1179    
+batch bounding time:  0.31325626373291016
+Current worst splitting domains lb-rhs (depth):
+-0.04736 (16), -0.04681 (16), -0.04533 (16), -0.04469 (16), -0.04420 (16), -0.04376 (16), -0.04375 (16), -0.04318 (16), -0.04281 (16), -0.04280 (16), -0.04274 (16), -0.04257 (16), -0.04221 (16), -0.04187 (16), -0.04167 (16), -0.04161 (16), -0.04108 (16), -0.04054 (16), -0.04049 (16), -0.04049 (16), 
+length of domains: 428
+Time: pickout 0.0023    decision 0.0560    solve 0.3133    add 0.0085    
+Accumulated time: pickout 0.0053    decision 0.5729    solve 1.6687    add 0.0218    
+Current (lb-rhs): -0.04736196994781494
+772 domains visited
+Cumulative time: 2.318742275238037
+
+batch:  torch.Size([428, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 654] [1, 979] [1, 475] [1, 979] [1, 654] [1, 979] [1, 654] [1, 475] [1, 654] [1, 979] 
+pruning_in_iteration open status: False
+ratio of positive domain = 101 / 856 = 0.1179906542056075
+pruning-in-iteration extra time: 0.00011324882507324219
+Time: prepare 0.0746    beta_bound 0.2609    bound 0.2610    transfer 0.0021    finalize 0.0744    func 0.4126    
+Accumulated time: func 2.0146    prepare 0.2185    bound 1.6185    beta_bound 1.6182    transfer 0.0069    finalize 0.1922    
+batch bounding time:  0.41295576095581055
+Current worst splitting domains lb-rhs (depth):
+-0.04148 (17), -0.04089 (17), -0.04055 (17), -0.04014 (17), -0.03909 (17), -0.03884 (17), -0.03853 (17), -0.03825 (17), -0.03792 (17), -0.03781 (17), -0.03780 (17), -0.03736 (17), -0.03732 (17), -0.03696 (17), -0.03692 (17), -0.03688 (17), -0.03680 (17), -0.03673 (17), -0.03640 (17), -0.03639 (17), 
+length of domains: 754
+Time: pickout 0.0036    decision 0.0848    solve 0.4131    add 0.0131    
+Accumulated time: pickout 0.0088    decision 0.6578    solve 2.0818    add 0.0349    
+Current (lb-rhs): -0.04148334264755249
+1526 domains visited
+Cumulative time: 2.8380331993103027
+
+batch:  torch.Size([754, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 475] [1, 475] [1, 654] [1, 475] [1, 475] [1, 475] [1, 475] [1, 979] [1, 475] [1, 475] 
+pruning_in_iteration open status: True
+ratio of positive domain = 317 / 1508 = 0.21021220159151188
+pruning-in-iteration extra time: 0.0063211917877197266
+Time: prepare 0.1293    beta_bound 0.3649    bound 0.3650    transfer 0.0129    finalize 0.1399    func 0.6478    
+Accumulated time: func 2.6624    prepare 0.3560    bound 1.9835    beta_bound 1.9831    transfer 0.0198    finalize 0.3322    
+batch bounding time:  0.6484882831573486
+Current worst splitting domains lb-rhs (depth):
+-0.03571 (18), -0.03526 (18), -0.03494 (18), -0.03489 (18), -0.03451 (18), -0.03449 (18), -0.03379 (18), -0.03338 (18), -0.03287 (18), -0.03279 (18), -0.03267 (18), -0.03262 (18), -0.03255 (18), -0.03252 (18), -0.03223 (18), -0.03222 (18), -0.03214 (18), -0.03202 (18), -0.03183 (18), -0.03177 (18), 
+length of domains: 1191
+Time: pickout 0.0060    decision 0.1408    solve 0.6486    add 0.0784    
+Accumulated time: pickout 0.0149    decision 0.7986    solve 2.7304    add 0.1133    
+Current (lb-rhs): -0.03570502996444702
+2717 domains visited
+Cumulative time: 3.7167396545410156
+
+batch:  torch.Size([1191, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 878] [1, 878] [1, 878] [1, 620] [1, 878] [1, 620] [1, 878] [1, 1468] [1, 878] [1, 878] 
+pruning_in_iteration open status: True
+ratio of positive domain = 590 / 2382 = 0.2476910159529807
+pruning-in-iteration extra time: 0.011824846267700195
+Time: prepare 0.2071    beta_bound 0.5167    bound 0.5168    transfer 0.0106    finalize 0.2187    func 1.0025    
+Accumulated time: func 3.6649    prepare 0.5748    bound 2.5003    beta_bound 2.4998    transfer 0.0304    finalize 0.5509    
+batch bounding time:  1.0035655498504639
+Current worst splitting domains lb-rhs (depth):
+-0.03221 (19), -0.03161 (19), -0.03146 (19), -0.03136 (19), -0.03096 (19), -0.03086 (19), -0.03022 (19), -0.02996 (19), -0.02981 (19), -0.02972 (19), -0.02957 (19), -0.02935 (19), -0.02921 (19), -0.02914 (19), -0.02909 (19), -0.02907 (19), -0.02907 (19), -0.02886 (19), -0.02882 (19), -0.02876 (19), 
+length of domains: 1792
+Time: pickout 0.0094    decision 0.2280    solve 1.0037    add 0.0271    
+Accumulated time: pickout 0.0243    decision 1.0266    solve 3.7341    add 0.1404    
+Current (lb-rhs): -0.03220599889755249
+4509 domains visited
+Cumulative time: 4.990818500518799
+
+batch:  torch.Size([1792, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] [1, 117] 
+pruning_in_iteration open status: True
+ratio of positive domain = 1784 / 3584 = 0.4977678571428571
+pruning-in-iteration extra time: 0.011928319931030273
+Time: prepare 0.3086    beta_bound 0.5896    bound 0.5897    transfer 0.0229    finalize 0.3138    func 1.2366    
+Accumulated time: func 4.9015    prepare 0.8996    bound 3.0900    beta_bound 3.0895    transfer 0.0532    finalize 0.8647    
+batch bounding time:  1.2379746437072754
+Current worst splitting domains lb-rhs (depth):
+-0.03015 (20), -0.02955 (20), -0.02940 (20), -0.02935 (20), -0.02890 (20), -0.02880 (20), -0.02818 (20), -0.02797 (20), -0.02777 (20), -0.02756 (20), -0.02724 (20), -0.02722 (20), -0.02716 (20), -0.02711 (20), -0.02702 (20), -0.02698 (20), -0.02682 (20), -0.02681 (20), -0.02675 (20), -0.02653 (20), 
+length of domains: 1800
+Time: pickout 0.0139    decision 0.3414    solve 1.2382    add 0.0298    
+Accumulated time: pickout 0.0382    decision 1.3679    solve 4.9723    add 0.1701    
+Current (lb-rhs): -0.030145466327667236
+6309 domains visited
+Cumulative time: 6.623974323272705
+
+batch:  torch.Size([1800, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] [1, 485] 
+pruning_in_iteration open status: True
+ratio of positive domain = 1729 / 3600 = 0.4802777777777778
+pruning-in-iteration extra time: 0.012038707733154297
+Time: prepare 0.3134    beta_bound 0.6046    bound 0.6047    transfer 0.0245    finalize 0.3173    func 1.2618    
+Accumulated time: func 6.1632    prepare 1.2296    bound 3.6947    beta_bound 3.6941    transfer 0.0778    finalize 1.1821    
+batch bounding time:  1.2635400295257568
+Current worst splitting domains lb-rhs (depth):
+-0.02637 (21), -0.02584 (21), -0.02569 (21), -0.02557 (21), -0.02528 (21), -0.02495 (21), -0.02470 (21), -0.02421 (21), -0.02419 (21), -0.02373 (21), -0.02367 (21), -0.02345 (21), -0.02344 (21), -0.02333 (21), -0.02328 (21), -0.02323 (21), -0.02322 (21), -0.02299 (21), -0.02286 (21), -0.02270 (21), 
+length of domains: 1871
+Time: pickout 0.0140    decision 0.3752    solve 1.2637    add 0.0325    
+Accumulated time: pickout 0.0521    decision 1.7432    solve 6.2360    add 0.2026    
+Current (lb-rhs): -0.026373744010925293
+8180 domains visited
+Cumulative time: 8.320237874984741
+
+batch:  torch.Size([1871, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 620] [1, 878] [1, 1468] [1, 620] [1, 878] [1, 1468] [1, 620] [1, 1468] [1, 620] [1, 878] 
+pruning_in_iteration open status: True
+ratio of positive domain = 1642 / 3742 = 0.4388027792624265
+pruning-in-iteration extra time: 0.011864900588989258
+Time: prepare 0.3412    beta_bound 0.6568    bound 0.6570    transfer 0.0242    finalize 0.4574    func 1.5823    
+Accumulated time: func 7.7455    prepare 1.5877    bound 4.3516    beta_bound 4.3509    transfer 0.1020    finalize 1.6394    
+batch bounding time:  1.5837197303771973
+Current worst splitting domains lb-rhs (depth):
+-0.02369 (22), -0.02291 (22), -0.02244 (22), -0.02207 (22), -0.02202 (22), -0.02171 (22), -0.02092 (22), -0.02079 (22), -0.02073 (22), -0.02064 (22), -0.02055 (22), -0.02054 (22), -0.02034 (22), -0.02025 (22), -0.02006 (22), -0.01999 (22), -0.01997 (22), -0.01996 (22), -0.01987 (22), -0.01959 (22), 
+length of domains: 2100
+Time: pickout 0.0144    decision 0.3564    solve 1.5839    add 0.1502    
+Accumulated time: pickout 0.0665    decision 2.0996    solve 7.8199    add 0.3528    
+Current (lb-rhs): -0.023687243461608887
+10280 domains visited
+Cumulative time: 10.437613248825073
+
+batch:  torch.Size([2100, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 620] [1, 828] [1, 507] [1, 620] [1, 620] [1, 620] [1, 620] [1, 507] [1, 620] [1, 620] 
+pruning_in_iteration open status: True
+ratio of positive domain = 1983 / 4200 = 0.4721428571428572
+pruning-in-iteration extra time: 0.012745380401611328
+Time: prepare 0.3799    beta_bound 0.7094    bound 0.7095    transfer 0.0280    finalize 0.3814    func 1.5011    
+Accumulated time: func 9.2466    prepare 1.9862    bound 5.0611    beta_bound 5.0603    transfer 0.1300    finalize 2.0209    
+batch bounding time:  1.503248929977417
+Current worst splitting domains lb-rhs (depth):
+-0.01837 (23), -0.01811 (23), -0.01781 (23), -0.01760 (23), -0.01760 (23), -0.01750 (23), -0.01738 (23), -0.01716 (23), -0.01695 (23), -0.01694 (23), -0.01677 (23), -0.01672 (23), -0.01667 (23), -0.01650 (23), -0.01647 (23), -0.01647 (23), -0.01639 (23), -0.01626 (23), -0.01621 (23), -0.01590 (23), 
+length of domains: 2217
+Time: pickout 0.0159    decision 0.4044    solve 1.5035    add 0.1229    
+Accumulated time: pickout 0.0825    decision 2.5040    solve 9.3234    add 0.4757    
+Current (lb-rhs): -0.018368840217590332
+12497 domains visited
+Cumulative time: 12.502045392990112
+
+batch:  torch.Size([2217, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] [1, 507] 
+pruning_in_iteration open status: True
+ratio of positive domain = 2396 / 4434 = 0.5403698691926027
+pruning-in-iteration extra time: 0.014274358749389648
+Time: prepare 0.5463    beta_bound 0.6905    bound 0.6906    transfer 0.0296    finalize 0.4027    func 1.6728    
+Accumulated time: func 10.9194    prepare 2.5604    bound 5.7517    beta_bound 5.7508    transfer 0.1597    finalize 2.4236    
+batch bounding time:  1.6751139163970947
+Current worst splitting domains lb-rhs (depth):
+-0.01401 (24), -0.01383 (24), -0.01355 (24), -0.01329 (24), -0.01309 (24), -0.01294 (24), -0.01292 (24), -0.01277 (24), -0.01272 (24), -0.01242 (24), -0.01241 (24), -0.01238 (24), -0.01224 (24), -0.01221 (24), -0.01220 (24), -0.01218 (24), -0.01204 (24), -0.01199 (24), -0.01195 (24), -0.01183 (24), 
+length of domains: 2038
+Time: pickout 0.0230    decision 0.6041    solve 1.6755    add 0.0322    
+Accumulated time: pickout 0.1054    decision 3.1081    solve 10.9989    add 0.5079    
+Current (lb-rhs): -0.014012932777404785
+14535 domains visited
+Cumulative time: 14.85083818435669
+
+batch:  torch.Size([2038, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 828] [1, 507] [1, 307] [1, 307] [1, 307] [1, 307] [1, 307] [1, 307] [1, 828] [1, 828] 
+pruning_in_iteration open status: True
+ratio of positive domain = 2892 / 4076 = 0.7095191364082434
+pruning-in-iteration extra time: 0.011781692504882812
+Time: prepare 0.3612    beta_bound 0.4983    bound 0.4984    transfer 0.0264    finalize 0.3652    func 1.2532    
+Accumulated time: func 12.1726    prepare 2.9401    bound 6.2501    beta_bound 6.2491    transfer 0.1861    finalize 2.7888    
+batch bounding time:  1.2550742626190186
+Current worst splitting domains lb-rhs (depth):
+-0.01187 (25), -0.01165 (25), -0.01139 (25), -0.01113 (25), -0.01090 (25), -0.01084 (25), -0.01080 (25), -0.01062 (25), -0.01057 (25), -0.01028 (25), -0.01022 (25), -0.01009 (25), -0.01009 (25), -0.01006 (25), -0.01004 (25), -0.00988 (25), -0.00984 (25), -0.00980 (25), -0.00969 (25), -0.00949 (25), 
+length of domains: 1184
+Time: pickout 0.0157    decision 0.4371    solve 1.2553    add 0.0188    
+Accumulated time: pickout 0.1211    decision 3.5452    solve 12.2542    add 0.5267    
+Current (lb-rhs): -0.011874854564666748
+15719 domains visited
+Cumulative time: 16.591970682144165
+
+batch:  torch.Size([1184, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 1453] 
+pruning_in_iteration open status: True
+ratio of positive domain = 1775 / 2368 = 0.7495777027027026
+pruning-in-iteration extra time: 0.011964082717895508
+Time: prepare 0.2180    beta_bound 0.3263    bound 0.3264    transfer 0.0082    finalize 0.2101    func 0.7639    
+Accumulated time: func 12.9365    prepare 3.1697    bound 6.5764    beta_bound 6.5754    transfer 0.1943    finalize 2.9989    
+batch bounding time:  0.7650256156921387
+Current worst splitting domains lb-rhs (depth):
+-0.00957 (26), -0.00937 (26), -0.00870 (26), -0.00869 (26), -0.00840 (26), -0.00831 (26), -0.00814 (26), -0.00809 (26), -0.00794 (26), -0.00793 (26), -0.00792 (26), -0.00779 (26), -0.00765 (26), -0.00757 (26), -0.00756 (26), -0.00750 (26), -0.00720 (26), -0.00716 (26), -0.00716 (26), -0.00706 (26), 
+length of domains: 593
+Time: pickout 0.0092    decision 0.2310    solve 0.7652    add 0.0120    
+Accumulated time: pickout 0.1303    decision 3.7762    solve 13.0195    add 0.5388    
+Current (lb-rhs): -0.00956881046295166
+16312 domains visited
+Cumulative time: 17.618528127670288
+
+batch:  torch.Size([593, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 878] [1, 1453] [1, 1453] [1, 1453] [1, 1940] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [0, 391] 
+pruning_in_iteration open status: True
+ratio of positive domain = 952 / 1186 = 0.8026981450252951
+pruning-in-iteration extra time: 0.011753320693969727
+Time: prepare 0.1059    beta_bound 0.2601    bound 0.2602    transfer 0.0030    finalize 0.0934    func 0.4631    
+Accumulated time: func 13.3996    prepare 3.2829    bound 6.8366    beta_bound 6.8355    transfer 0.1972    finalize 3.0923    
+batch bounding time:  0.4635641574859619
+Current worst splitting domains lb-rhs (depth):
+-0.00637 (27), -0.00636 (27), -0.00606 (27), -0.00598 (27), -0.00522 (27), -0.00516 (27), -0.00488 (27), -0.00483 (27), -0.00448 (27), -0.00443 (27), -0.00431 (27), -0.00430 (27), -0.00430 (27), -0.00424 (27), -0.00424 (27), -0.00416 (27), -0.00407 (27), -0.00406 (27), -0.00403 (27), -0.00393 (27), 
+length of domains: 234
+Time: pickout 0.0049    decision 0.1132    solve 0.4637    add 0.0752    
+Accumulated time: pickout 0.1353    decision 3.8894    solve 13.4832    add 0.6140    
+Current (lb-rhs): -0.006365478038787842
+16546 domains visited
+Cumulative time: 18.27962350845337
+
+batch:  torch.Size([234, 16, 16, 16]) pre split depth:  1
+post split depth:  1
+splitting decisions: 
+split level 0: [1, 124] [1, 124] [1, 124] [1, 124] [1, 1453] [1, 1453] [1, 1453] [1, 1453] [1, 124] [1, 1453] 
+pruning_in_iteration open status: True
+ratio of positive domain = 417 / 468 = 0.891025641025641
+pruning-in-iteration extra time: 0.012192010879516602
+Time: prepare 0.0422    beta_bound 0.2456    bound 0.2456    transfer 0.0015    finalize 0.0370    func 0.3266    
+Accumulated time: func 13.7261    prepare 3.3295    bound 7.0823    beta_bound 7.0811    transfer 0.1987    finalize 3.1292    
+batch bounding time:  0.3267958164215088
+Current worst splitting domains lb-rhs (depth):
+-0.00414 (28), -0.00412 (28), -0.00383 (28), -0.00376 (28), -0.00299 (28), -0.00293 (28), -0.00264 (28), -0.00259 (28), -0.00232 (28), -0.00231 (28), -0.00220 (28), -0.00216 (28), -0.00209 (28), -0.00205 (28), -0.00191 (28), -0.00189 (28), -0.00189 (28), -0.00178 (28), -0.00173 (28), -0.00171 (28), 
+length of domains: 51
+Time: pickout 0.0023    decision 0.0534    solve 0.3269    add 0.0035    
+Accumulated time: pickout 0.1375    decision 3.9428    solve 13.8100    add 0.6175    
+Current (lb-rhs): -0.004136085510253906
+16597 domains visited
+Cumulative time: 18.667189598083496
+
+batch:  torch.Size([51, 16, 16, 16]) pre split depth:  3
+post split depth:  3
+splitting decisions: 
+split level 0: [0, 391] [0, 391] [0, 391] [0, 391] [0, 391] [0, 391] [1, 828] [1, 878] [1, 828] [1, 828] 
+split level 1: [1, 1348] [1, 1348] [1, 1348] [1, 1348] [1, 1348] [1, 1348] [0, 391] [0, 391] [0, 391] [0, 391] 
+split level 2: [1, 1467] [1, 1467] [1, 1467] [1, 1467] [1, 1467] [1, 1467] [1, 1348] [1, 1348] [1, 1348] [1, 1348] 
+
+all verified at 0th iter
+pruning_in_iteration open status: False
+ratio of positive domain = 408 / 408 = 1.0
+pruning-in-iteration extra time: 0.00010323524475097656
+Time: prepare 0.0373    beta_bound 0.0075    bound 0.0076    transfer 0.0012    finalize 0.0420    func 0.0883    
+Accumulated time: func 13.8144    prepare 3.3696    bound 7.0899    beta_bound 7.0886    transfer 0.1999    finalize 3.1712    
+batch bounding time:  0.08852839469909668
+length of domains: 0
+Time: pickout 0.0010    decision 0.0340    solve 0.1180    add 0.0014    
+Accumulated time: pickout 0.1386    decision 3.9768    solve 13.9280    add 0.6189    
+No domains left, verification finished!
+Current (lb-rhs): 1.0000000116860974e-07
+16597 domains visited
+Cumulative time: 18.82280683517456
+
+
+Properties batch 4, size 1
+Remaining timeout: 60.52522826194763
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0.  0. -1.  0.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 0.40182065963745117.
+
+Properties batch 5, size 1
+Remaining timeout: 60.36326456069946
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0.  0.  0. -1.  1.  0.  0.  0.]]]
+thresholds: [0] ######
+Remaining spec index [0] with bounds tensor([[-0.18405747]], device='cuda:0') need to verify.
+Model prediction is: tensor([-6.23515034, -9.22857857, -3.75808787, -3.27435422, -4.29405212,
+        -3.58545494, -2.41056538, -6.29414558, -6.66572857, -8.34386158],
+       device='cuda:0')
+build_the_model_with_refined_bounds batch [0/1]
+setting alpha for layer /input.4 start_node /23 with alignment adjustment
+setting alpha for layer /12 start_node /23 with alignment adjustment
+setting alpha for layer /22 start_node /23 with alignment adjustment
+all slope initialized
+directly get lb and ub from refined bounds
+lA shapes: [torch.Size([1, 1, 16, 16, 16]), torch.Size([1, 1, 32, 8, 8]), torch.Size([1, 1, 100])]
+c shape: torch.Size([1, 1, 10])
+alpha-CROWN with fixed intermediate bounds: tensor([[-0.18405747]], device='cuda:0') tensor([[inf]], device='cuda:0')
+Keeping slopes for these layers: ['/23']
+Keeping slopes for these layers: ['/23']
+layer 0 name BoundConv(name="/input") size torch.Size([4096]) unstable 590
+layer 1 name BoundConv(name="/input.8") size torch.Size([2048]) unstable 242
+layer 2 name BoundLinear(name="/input.12") size torch.Size([100]) unstable 21
+-----------------
+# of unstable neurons: 853
+-----------------
+
+batch:  torch.Size([1, 16, 16, 16]) pre split depth:  8
+post split depth:  8
+splitting decisions: 
+split level 0: [2, 33] 
+split level 1: [2, 41] 
+split level 2: [2, 51] 
+split level 3: [2, 11] 
+split level 4: [2, 13] 
+split level 5: [2, 45] 
+split level 6: [1, 483] 
+split level 7: [1, 475] 
+
+all verified at 0th iter
+pruning_in_iteration open status: False
+ratio of positive domain = 256 / 256 = 1.0
+pruning-in-iteration extra time: 0.0001068115234375
+Time: prepare 0.0210    beta_bound 0.0100    bound 0.0101    transfer 0.0009    finalize 0.0204    func 0.0524    
+Accumulated time: func 0.0524    prepare 0.0264    bound 0.0101    beta_bound 0.0100    transfer 0.0009    finalize 0.0204    
+batch bounding time:  0.0525965690612793
+length of domains: 0
+Time: pickout 0.0008    decision 0.0481    solve 0.0762    add 0.0014    
+Accumulated time: pickout 0.0008    decision 0.0481    solve 0.0762    add 0.0014    
+No domains left, verification finished!
+Current (lb-rhs): 1.0000000116860974e-07
+0 domains visited
+Cumulative time: 0.13316130638122559
+
+
+Properties batch 6, size 1
+Remaining timeout: 60.126490354537964
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0.  0.  0.  0.  1. -1.  0.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 2.2268309593200684.
+
+Properties batch 7, size 1
+Remaining timeout: 60.07786774635315
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0.  0.  0.  0.  1.  0. -1.  0.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 2.0321390628814697.
+
+Properties batch 8, size 1
+Remaining timeout: 60.03630781173706
+##### Instance 0 first 10 spec matrices: [[[ 0.  0.  0.  0.  0.  0.  1.  0.  0. -1.]]]
+thresholds: [0] ######
+Initial alpha-CROWN verified for spec index [0] with bound 3.8689804077148438.
+Result: safe in 30.0036 seconds
+############# Summary #############
+Final verified acc: 100.0% (total 1 examples)
+Problem instances count: 1 , total verified (safe/unsat): 1 , total falsified (unsafe/sat): 0 , timeout: 0
+mean time for ALL instances (total 1):30.003276484340258, max time: 30.003576517105103
+mean time for verified SAFE instances(total 1): 30.003576517105103, max time: 30.003576517105103
+safe (total 1), index: [0]
