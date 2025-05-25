@@ -3,10 +3,10 @@
 ##   α,β-CROWN (alpha-beta-CROWN) neural network verifier developed    ##
 ##   by the α,β-CROWN Team                                             ##
 ##                                                                     ##
-##   Copyright (C) 2020-2024 The α,β-CROWN Team                        ##
-##   Primary contacts: Huan Zhang <huan@huan-zhang.com>                ##
-##                     Zhouxing Shi <zshi@cs.ucla.edu>                 ##
-##                     Kaidi Xu <kx46@drexel.edu>                      ##
+##   Copyright (C) 2020-2025 The α,β-CROWN Team                        ##
+##   Primary contacts: Huan Zhang <huan@huan-zhang.com> (UIUC)         ##
+##                     Zhouxing Shi <zshi@cs.ucla.edu> (UCLA)          ##
+##                     Xiangru Zhong <xiangru4@illinois.edu> (UIUC)    ##
 ##                                                                     ##
 ##    See CONTRIBUTORS for all author contacts and affiliations.       ##
 ##                                                                     ##
@@ -18,6 +18,7 @@ import logging
 import time
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import os
 import sys
 import appdirs
@@ -41,6 +42,7 @@ warnings.simplefilter("once")
 # Special identity matrix. Avoid extra computation of identity matrix multiplication in various places.
 eyeC = namedtuple('eyeC', 'shape device')
 OneHotC = namedtuple('OneHotC', 'shape device index coeffs')
+BatchedCrownC = namedtuple('BatchedCrownC', 'type')
 
 def onehotc_to_dense(one_hot_c: OneHotC, dtype: torch.dtype) -> torch.Tensor:
     shape = one_hot_c.shape  # [spec, batch, C, H, W]
@@ -58,10 +60,10 @@ def onehotc_to_dense(one_hot_c: OneHotC, dtype: torch.dtype) -> torch.Tensor:
 # Benchmarking mode disable some expensive assertions.
 Benchmarking = True
 
-reduction_sum = lambda x: x.sum(1, keepdim=True)
-reduction_mean = lambda x: x.mean(1, keepdim=True)
-reduction_max = lambda x: x.max(1, keepdim=True).values
-reduction_min = lambda x: x.min(1, keepdim=True).values
+reduction_sum = lambda x: x.sum(dim=tuple(range(1, x.dim())), keepdim=True)
+reduction_mean = lambda x: x.mean(dim=tuple(range(1, x.dim())), keepdim=True)
+reduction_max = lambda x: x.amax(dim=tuple(range(1, x.dim())), keepdim=True)
+reduction_min = lambda x: x.amin(dim=tuple(range(1, x.dim())), keepdim=True)
 
 MIN_HALF_FP = 5e-8  # 2**-24, which is the smallest value that float16 can be represented
 
@@ -318,18 +320,150 @@ def unravel_index(
     return list(reversed(coord))
 
 
-def fill_template(out, template):
-    if template is None:
-        return out.popleft()
-    elif isinstance(template, (list, tuple)):
-        res = []
-        for t in template:
-            res.append(fill_template(t))
-        return tuple(res) if isinstance(template, tuple) else res
-    elif isinstance(template, dict):
-        res = {}
-        for key in template:
-            res[key] = fill_template(template[key])
-        return res
+class AutoBatchSize:
+    def __init__(self, init_batch_size, device, vram_ratio=0.9, enable=True):
+        self.batch_size = init_batch_size
+        self.max_actual_batch_size = 0
+        self.device = device
+        self.vram_ratio = vram_ratio
+        self.enable = enable
+
+    def record_actual_batch_size(self, actual_batch_size):
+        """Record the actual batch size used.
+
+        It may be smaller than self.batch_size, especially for the early batches.
+        """
+        self.max_actual_batch_size = max(self.max_actual_batch_size, actual_batch_size)
+
+    def update(self):
+        """Check if the batch size can be enlarged."""
+        if not self.enable:
+            return None
+        # Only try to update the batch size if the current batch size has
+        # been actually used, as indicated by `max_actual_batch_size`
+        if self.device == 'cpu' or self.max_actual_batch_size < self.batch_size:
+            return None
+        total_vram = torch.cuda.get_device_properties(self.device).total_memory
+        current_vram = torch.cuda.memory_reserved(self.device)
+        if current_vram * 2 >= total_vram * self.vram_ratio:
+            return None
+        new_batch_size = self.batch_size * 2
+        self.batch_size = new_batch_size
+        logger.debug('Automatically updated batch size to %d', new_batch_size)
+        return {
+            'current_vram': current_vram,
+            'total_vram': total_vram,
+        }
+
+
+def sync_params(model_ori: torch.nn.Module,
+                model: 'BoundedModule',
+                loss_fusion: bool = False):
+    """Sync the parameters from a BoundedModule to the original model."""
+    state_dict_loss = model.state_dict()
+    state_dict = model_ori.state_dict()
+    for name in state_dict_loss:
+        v = state_dict_loss[name]
+        if name.endswith('.param'):
+            name = name[:-6]
+        elif name.endswith('.buffer'):
+            name = name[:-7]
+        else:
+            raise NameError(name)
+        name_ori = model[name].ori_name
+        if loss_fusion:
+            assert name_ori.startswith('model.')
+            name_ori = name_ori[6:]
+        assert name_ori in state_dict
+        state_dict[name_ori] = v
+    model_ori.load_state_dict(state_dict)
+    return state_dict
+
+# Help function to calculate the output padding for conv2d.
+def _find_output_padding(output_shape, input_shape, weight, stride, dilation, padding):
+    output_padding0 = (
+        int(input_shape[2]) - (int(output_shape[2]) - 1) * stride[0] + 2 *
+        padding[0] - 1 - (int(weight.size()[2] - 1) * dilation[0]))
+    output_padding1 = (
+        int(input_shape[3]) - (int(output_shape[3]) - 1) * stride[1] + 2 *
+        padding[1] - 1 - (int(weight.size()[3] - 1) * dilation[1]))
+    return (output_padding0, output_padding1)
+
+# Help function for calculating the spectral norm of convolutional layers.
+def power_iteration(weight, input_shape, output_shape, stride, padding, dilation, groups, num_iterations=100):
+    """Calculate the Lipschitz constant of a convolutional layer using Power Iteration."""
+    with torch.no_grad():
+        output_padding = _find_output_padding(output_shape=output_shape, input_shape=input_shape,
+                                              weight=weight, stride=stride, dilation=dilation, padding=padding)
+        x_k = torch.randn(input_shape, device=weight.device)
+        norm = x_k.view(x_k.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+        x_k = x_k / norm
+
+        for _ in range(num_iterations):
+            x_k1 = F.conv2d(x_k, weight, bias=None, stride=stride, padding=padding, dilation=dilation, groups=groups)
+            conv_norm = x_k1.reshape(x_k1.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+            x_k1 = x_k1 / conv_norm
+            x_k = F.conv_transpose2d(x_k1, weight, bias=None, stride=stride,
+                                    padding=padding, dilation=dilation, 
+                                    groups=groups, output_padding=output_padding)
+            deconv_norm = x_k.reshape(x_k.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+            x_k = x_k / deconv_norm
+        # The largest singular value (Lipschitz constant) is based on the last computed norm before normalization
+        sigma = conv_norm.view(conv_norm.size(0), -1).max(dim=1)[0]
+    return sigma
+
+# Help function for calculating the spectral norm of convolutional layers.
+def power_iteration_operator(pre_diag, cur_diag, weight, input_shape, output_shape, stride, padding, dilation, groups, num_iterations=100):
+    """Calculate the Lipschitz constant of a convolutional layer using Power Iteration."""
+    with torch.no_grad():
+        output_padding = _find_output_padding(output_shape=output_shape, input_shape=input_shape,
+                                        weight=weight, stride=stride, dilation=dilation, padding=padding)
+        x_k = torch.randn(input_shape, device=weight.device)
+        norm = x_k.view(x_k.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+        x_k = x_k / norm
+
+        for _ in range(num_iterations):
+            x_k = torch.where(pre_diag != 0, x_k * pre_diag, torch.zeros_like(x_k))
+            x_k1 = F.conv2d(x_k, weight, bias=None, stride=stride, padding=padding, dilation=dilation, groups=groups)
+            x_k1 = torch.where(cur_diag != 0, x_k1 / cur_diag, torch.zeros_like(x_k1))
+            conv_norm = x_k1.reshape(x_k1.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+            x_k1 = x_k1 / conv_norm
+
+            x_k = F.conv_transpose2d(x_k1, weight, bias=None, stride=stride,
+                                      padding=padding, dilation=dilation, groups=groups, output_padding=output_padding)
+            deconv_norm = x_k.reshape(x_k.size(0), -1).norm(dim=1, keepdim=True).view(-1, 1, 1, 1)
+            x_k = x_k / deconv_norm
+
+        sigma = conv_norm.view(conv_norm.size(0), -1).max(dim=1)[0]
+    return sigma
+
+# Help function for calculating the spectral norm of linear layers.
+def spectral_norm_calculatetion(w, rho):
+    if w.dim() == 2:
+        # Single sample case.
+        _, S, _ = torch.svd(w)
+        sigma = S[0]
+    elif w.dim() == 3:
+        # Multiple sample case.
+        # S shape(batch, min(m, n))
+        _, S, _ = torch.svd(w)
+        sigma = S[:, 0]
     else:
-        raise NotImplementedError
+        raise ValueError('w has unsupported shape')
+    return rho * sigma
+
+# The inverse of diagonal matrix is equal to the diagonal of the element-wise
+# inverse, but be careful for the zeros. 
+def diag_inv_partial(rho: torch.Tensor) -> torch.Tensor:
+    if rho.dim() == 1:
+        inv = torch.empty_like(rho)
+        zero_mask = (rho == 0)
+        inv[~zero_mask] = 1.0 / rho[~zero_mask]
+        inv[zero_mask] = 0.0
+        return torch.diag(inv)
+    elif rho.dim() == 2:
+        zero_mask = (rho == 0)
+        inv = torch.empty_like(rho)
+        inv[~zero_mask] = 1.0 / rho[~zero_mask]
+        inv[zero_mask] = 0.0
+        return torch.diag_embed(inv)
