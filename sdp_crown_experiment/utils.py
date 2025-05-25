@@ -131,21 +131,23 @@ def load_model_and_dataset(args, device):
     
     dataset = dataset[args.start:args.end]
     labels = labels[args.start:args.end]
-    
-    # match args.dataset:
-    #     case "mnist":
-    #         dataset = np.load('./data/sdp/mnist/X_sdp.npy')
-    #         labels = np.load('./data/sdp/mnist/y_sdp.npy')
-    #         dataset = torch.from_numpy(dataset).permute(0,3,1,2)
-    #         labels = torch.from_numpy(labels)
-    #         range = args.radius
-    #         classes = 10
-    #     case "cifar10":
-    #         dataset = np.load('./data/sdp/cifar/X_sdp.npy')
-    #         labels = np.load('./data/sdp/cifar/y_sdp.npy')
-    #         dataset = preprocess_cifar(dataset)
-    #         dataset = torch.from_numpy(dataset).permute(0,3,1,2)
-    #         labels = torch.from_numpy(labels)
-    #         range = args.radius/0.225
-    #         classes = 10
     return model, dataset, labels, range, classes
+
+def pgd(model, images, target_labels, radius, num_iter, true_labels=None):
+    delta = nn.Parameter(torch.zeros_like(images).uniform_(-radius, radius).to(images.device))
+    optimizer = torch.optim.Adam([delta])
+
+    for _ in range(num_iter):
+        optimizer.zero_grad()
+        input_all = images + delta
+        outputs_all = model(input_all)   
+        loss_all = outputs_all[0][true_labels] - outputs_all[0][target_labels]
+        loss_all.backward()
+        optimizer.step()
+        # Project delta back to L2 ball
+        delta.data = torch.clamp(delta.data, 0, 255)
+        delta_norm = delta.data.view(delta.size(0), -1).norm(p=2, dim=1, keepdim=True)
+        if delta_norm > radius:
+            delta.data = delta.data * (radius / delta_norm)
+            
+    return images + delta
