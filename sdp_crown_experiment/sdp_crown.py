@@ -79,12 +79,12 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--radius', default=1, type=parse_float_or_fraction, help='L2_norm range')
+    parser.add_argument('-r', '--radius', default=24/255, type=parse_float_or_fraction, help='L2_norm range')
     parser.add_argument('--lr_alpha', default=0.5, type=float, help='alpha learning rate')
     parser.add_argument('--lr_lambda', default=0.05, type=float, help='lmabda learning rate')
     parser.add_argument('--start', default=0, type=int, help='start_index')
     parser.add_argument('--end', default=200, type=int, help='end_index')
-    parser.add_argument('--model', default='mnist_mlp',
+    parser.add_argument('--model', default='cifar10_cnn_c',
     choices=[
         'mnist_mlp',
         'mnist_convsmall',

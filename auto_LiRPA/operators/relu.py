@@ -61,6 +61,7 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
 
         # Initialize optimizable variables for L2 norm perturbation.
         self.lambda_out = OrderedDict()
+        self.lambda_in = OrderedDict()
         # Alpha can be sparse in both spec dimension, and the C*H*W dimension.
         # We first deal with the sparse-feature alpha, which is sparse in the
         # C*H*W dimesnion of this layer.
@@ -142,6 +143,11 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 self.alpha[ns] = torch.empty([self.alpha_size, sparsity + 1, batch_size, *alpha_shape],
                                              dtype=torch.float, device=ref.device, requires_grad=True)
                 self.alpha[ns].data.copy_(alpha_init.data)  # This will broadcast to (2, sparse_spec) dimensions.
+                # For fully connected layer, lambda_in shape is (2, sparse_spec, batch, this_layer_shape)
+                # lambda_out shape is (2, sparse_spec, batch)
+                self.lambda_in[ns] = torch.empty([self.alpha_size, sparsity + 1, batch_size, *alpha_shape],
+                                dtype=torch.float, device=ref.device, requires_grad=True)
+                nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
                 
                 if L2_variable_shape:
                     self.lambda_out[ns] = torch.ones([self.alpha_size, *L2_variable_shape[:4]],
@@ -181,6 +187,11 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 self.alpha[ns] = torch.empty([self.alpha_size, size_s, batch_size, *alpha_shape],
                                              dtype=torch.float, device=ref.device, requires_grad=True)
                 self.alpha[ns].data.copy_(alpha_init.data)  # This will broadcast to (2, spec) dimensions
+                # lambda_in shape is (2, spec, batch, this_layer_shape). "this_layer_shape" may still be sparse.
+                # lambda_out shape is (2, spec, batch).
+                self.lambda_in[ns] = torch.empty([self.alpha_size, size_s, batch_size, *alpha_shape],
+                                    dtype=torch.float, device=ref.device, requires_grad=True)
+                nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
                 
                 if L2_variable_shape is not None:
                     self.lambda_out[ns] = torch.ones([self.alpha_size, *L2_variable_shape[:4]],
@@ -333,60 +344,45 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
             raise ValueError
         return full_alpha
 
-    def construct_L2_variables(self, w, g, lambda_w, z, sign=+1):
-        a = torch.where(
-            z*lambda_w >= sign*(g - w),
-            (g - w)**2 / lambda_w - 2 * z * sign*(g - w),
-            -lambda_w * z**2
-        )
-        b = torch.where(
-            z*lambda_w <= (sign*g),
-            g**2 / lambda_w - 2 * z * sign*g,
-            -lambda_w * z**2
-        )
-        output = torch.max(a,b)
-        return output
-
     # Reduce h based on the L2 norm constraint.
-    def reduce_bias_based_on_L2_norm(self, w, g, input_center, rho, lambda_out, start_node, output_shape, sign=+1):
+    def reduce_bias_based_on_L2_norm(self, w, g, L2_center, rho, lambda_out, lambda_in, start_node, output_shape, inputs, sign=+1):
+        input_upper_bound = inputs.upper
+        input_lower_bound = inputs.lower
+        Linf_center = (input_upper_bound + input_lower_bound) / 2.0
+        Linf_radius = (input_upper_bound - input_lower_bound) / 2.0
+        # (TODO ellipsoid)
+        # Linf_center = Linf_center / Linf_radius
+        # L2_center = L2_center / Linf_radius
+        # L2_center = L2_center * 1000000
         if isinstance(w, Patches):
             # Before unfolding shape: [batch, in_c, H, W], After unfolding shape: [batch, out_h, out_w, in_c, in_h, in_w].
             patch_size = self.patch_size[start_node.name]
-            input_center = inplace_unfold(input_center, (patch_size[-2], patch_size[-1]), w.stride, w.padding, w.inserted_zeros, w.output_padding).unsqueeze(0).expand(patch_size)
+            L2_center = inplace_unfold(L2_center, (patch_size[-2], patch_size[-1]), w.stride, w.padding, w.inserted_zeros, w.output_padding)
+            Linf_radius = inplace_unfold(Linf_radius, (patch_size[-2], patch_size[-1]), w.stride, w.padding, w.inserted_zeros, w.output_padding)
+            Linf_center = inplace_unfold(Linf_center, (patch_size[-2], patch_size[-1]), w.stride, w.padding, w.inserted_zeros, w.output_padding)
             w_ = w.patches
             g_ = g.patches
-            lambda_out = unfold_L2_variables(lambda_out, w)
-            input_center = unfold_L2_variables(input_center, w)
-            if lambda_out.shape[0] != w_.shape[0]:
-                lambda_out = lambda_out.view(-1, lambda_out.shape[1])
-                input_center = input_center.view(-1, *patch_size[4:])
+            lambda_w = lambda_out[:, :, :, :, None, None, None]
         else:
             w_ = w
             g_ = g     
-        if w_.ndim == 7:
-            lambda_w = lambda_out[:, :, :, :, None, None, None]
-        elif w_.ndim == 5:
-            lambda_w = lambda_out[:, :, None, None, None]
-        else:
             lambda_w = lambda_out[:, :, None]
-        result = self.construct_L2_variables(w_, g_, lambda_w, input_center, sign)
-        if lambda_out.dim() == 4:  # (channel, batch, h, w)
-            rho = rho.view(1, -1, 1, 1)
-        elif lambda_out.dim() == 2:  # (neurons, batch)
-            rho = rho.view(1, -1)
-        # Compute the L2 norm along all non-batch dimensions
+            if w_.ndim == 5:
+                lambda_w = lambda_out[:, :, None, None, None]
+
+        # Construct h(g,lambda) in SDP-CROWN paper
+        # (TODO) add ellipsoid
+        lz = lambda_w*L2_center
+        lz2 = lambda_w*L2_center**2
         if isinstance(w, Patches):
-            result_1 = torch.sum(result,  dim=tuple(range(w_.ndim-3, w_.ndim))).view(output_shape)
-            if sign == -1:
-                z = -1/2*((lambda_out*rho**2).view(output_shape) + result_1)
-            else:
-                z = 1/2*((lambda_out*rho**2).view(output_shape) + result_1)
-        else:
-            result_1 = torch.sum(result, dim=tuple(range(2, w_.ndim))).view(output_shape)
-            if sign == -1:
-                z = -1/2*((lambda_out*rho**2) + result_1)
-            else:
-                z = 1/2*((lambda_out*rho**2) + result_1)
+            lz = unfold_L2_variables(lz, w)
+            lz2 = unfold_L2_variables(lz2, w)
+            lambda_w = unfold_L2_variables(lambda_w, w)
+        psi = torch.minimum(sign*(g_-w_) - lz, sign*(-g_) + lz).clamp_(max=0)
+        result = -lz2 + psi**2 / lambda_w
+        result_1 = lambda_w.view(output_shape)*rho**2
+        result_2 = torch.sum(result, dim=tuple(range(len(output_shape), result.ndim))).view(output_shape)
+        z = sign*1/2*(result_1 + result_2)
         return z
 
     def bound_backward(self, last_lA, last_uA, x=None, start_node=None,
@@ -399,6 +395,10 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
         """
         lower = x.lower
         upper = x.upper
+        # Use the input bounds as the bounds for relu layer. This will be used to 
+        # recalculate the L2 radius for the next layer.
+        self.lower = lower
+        self.upper = upper
         # Get element-wise CROWN linear relaxations.
         (upper_d, upper_b, lower_d, lower_b, lb_lower_d, ub_lower_d,
             lb_upper_d, ub_upper_d, lb_upper_b, ub_upper_b, alpha_lookup_idx) = \
@@ -495,20 +495,27 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 lower_b, lb_upper_b if lb_upper_b is not None else upper_b)
         
         # Update the bias if the L2 norm is available.
-        if self.input_rho is not None and self.opt_stage in ['opt', 'reuse'] and self.L2_stage in ['opt', 'compare']:
+        if self.input_rho is not None and self.opt_stage in ['opt', 'reuse'] and self.L2_stage in ['opt']:
             selected_lambda_out = self.select_optimizable_variables_by_idx(last_lA, last_uA, unstable_idx, start_node, alpha_lookup_idx, self.lambda_out)
+            selected_lambda_in = self.select_optimizable_variables_by_idx(last_lA, last_uA, unstable_idx, start_node, alpha_lookup_idx, self.lambda_in)
             if last_uA is not None:
-                ubias_ = self.reduce_bias_based_on_L2_norm(last_uA, uA, self.xc, self.input_rho, selected_lambda_out[1], start_node, ubias.shape, sign=+1)
-                if self.L2_stage == 'compare':
-                    ubias = torch.min(ubias_, ubias)
+                if self.alpha_indices is not None:
+                    full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[1], selected_lambda_in[1].shape[:-1]+self.shape, self.alpha_indices)
                 else:
-                    ubias = ubias_
+                    full_lambda_in = selected_lambda_in[1]
+                full_lambda_in = maybe_unfold_patches(full_lambda_in, last_uA, alpha_lookup_idx)
+                ubias_ = self.reduce_bias_based_on_L2_norm(last_uA, uA, self.xc, self.input_rho, selected_lambda_out[1], full_lambda_in, start_node, ubias.shape, x, sign=+1)
+                # (TODO) Add elementwise bound to make sure sdp crown is always better
+                ubias = torch.min(ubias_, ubias)
             if last_lA is not None:
-                lbias_ = self.reduce_bias_based_on_L2_norm(last_lA, lA, self.xc, self.input_rho, selected_lambda_out[0], start_node, lbias.shape, sign=-1)
-                if self.L2_stage == 'compare':
-                    lbias = torch.max(lbias_, lbias)
+                if self.alpha_indices is not None:
+                    full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[0], selected_lambda_in[0].shape[:-1]+self.shape, self.alpha_indices)
                 else:
-                    lbias = lbias_
+                    full_lambda_in = selected_lambda_in[0]
+                full_lambda_in = maybe_unfold_patches(full_lambda_in, last_lA, alpha_lookup_idx)
+                lbias_ = self.reduce_bias_based_on_L2_norm(last_lA, lA, self.xc, self.input_rho, selected_lambda_out[0], full_lambda_in, start_node, lbias.shape, x, sign=-1)
+                # (TODO) Add elementwise bound to make sure sdp crown is always better
+                lbias = torch.max(lbias_, lbias)
 
         if self.cut_used:
             # propagate prerelu node in cut constraints
@@ -555,7 +562,9 @@ class BoundRelu(BoundTwoPieceLinear):
     def clip_lambda(self):
         with torch.no_grad():
             for v in self.lambda_out.values():
-                v.clamp_(min=1e-5) 
+                v.clamp_(min=1e-7)
+            for v in self.lambda_in.values():
+                v.clamp_(min=1e-7)
 
     def forward(self, x):
         self.shape = x.shape[1:]
@@ -1348,3 +1357,4 @@ class BoundReluGrad(BoundActivation):
         return (
             [(lA, uA), (lA_neg, uA_pos), (lA_pos, uA_neg), (None, None)],
             lbias, ubias)
+    
