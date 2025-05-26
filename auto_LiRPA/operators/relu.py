@@ -507,8 +507,8 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 full_lambda_in = []
                 ubias_ = self.reduce_bias_based_on_L2_norm(last_uA, uA, self.xc, self.input_rho, selected_lambda_out[1], full_lambda_in, start_node, ubias.shape, x, sign=+1)
                 # (TODO) Add elementwise bound to make sure sdp crown is always better
-                ubias = torch.min(ubias_, ubias)
-                # ubias = ubias_
+                # ubias = torch.min(ubias_, ubias)
+                ubias = ubias_
             if last_lA is not None:
                 # if self.alpha_indices is not None:
                 #     full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[0], selected_lambda_in[0].shape[:-1]+self.shape, self.alpha_indices)
@@ -518,8 +518,8 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 full_lambda_in = []
                 lbias_ = self.reduce_bias_based_on_L2_norm(last_lA, lA, self.xc, self.input_rho, selected_lambda_out[0], full_lambda_in, start_node, lbias.shape, x, sign=-1)
                 # (TODO) Add elementwise bound to make sure sdp crown is always better
-                lbias = torch.max(lbias_, lbias)
-                # lbias = lbias_
+                # lbias = torch.max(lbias_, lbias)
+                lbias = lbias_
 
         if self.cut_used:
             # propagate prerelu node in cut constraints
@@ -566,9 +566,9 @@ class BoundRelu(BoundTwoPieceLinear):
     def clip_lambda(self):
         with torch.no_grad():
             for v in self.lambda_out.values():
-                v.clamp_(min=1e-7)
+                v.clamp_(min=1e-6)
             # for v in self.lambda_in.values():
-            #     v.clamp_(min=1e-7)
+            #     v.clamp_(min=1e-6)
 
     def forward(self, x):
         self.shape = x.shape[1:]
