@@ -350,10 +350,7 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
         input_lower_bound = inputs.lower
         Linf_center = (input_upper_bound + input_lower_bound) / 2.0
         Linf_radius = (input_upper_bound - input_lower_bound) / 2.0
-        # (TODO ellipsoid)
-        # Linf_center = Linf_center / Linf_radius
-        # L2_center = L2_center / Linf_radius
-        # L2_center = L2_center * 1000000
+
         if isinstance(w, Patches):
             # Before unfolding shape: [batch, in_c, H, W], After unfolding shape: [batch, out_h, out_w, in_c, in_h, in_w].
             patch_size = self.patch_size[start_node.name]
@@ -362,28 +359,25 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
             Linf_center = inplace_unfold(Linf_center, (patch_size[-2], patch_size[-1]), w.stride, w.padding, w.inserted_zeros, w.output_padding)
             w_ = w.patches
             g_ = g.patches
-            lambda_w = lambda_out[:, :, :, :, None, None, None]
+            if w.unstable_idx is not None:
+                L2_center = L2_center[:, w.unstable_idx[1],w.unstable_idx[2]].transpose(0, 1)
+                lambda_w = lambda_out[w.unstable_idx[0],:,w.unstable_idx[1],w.unstable_idx[2], None, None, None]
+            else:
+                lambda_w = lambda_out[:, :, :, :, None, None, None]
         else:
             w_ = w
             g_ = g     
-            lambda_w = lambda_out[:, :, None]
             if w_.ndim == 5:
                 lambda_w = lambda_out[:, :, None, None, None]
+            else:
+                lambda_w = lambda_out[:, :, None]
 
-        # Construct h(g,lambda) in SDP-CROWN paper
-        # (TODO) add ellipsoid
-        lz = lambda_w*L2_center
-        lz2 = lambda_w*L2_center**2
-        if isinstance(w, Patches):
-            lz = unfold_L2_variables(lz, w)
-            lz2 = unfold_L2_variables(lz2, w)
-            lambda_w = unfold_L2_variables(lambda_w, w)
-        psi = torch.minimum(sign*(g_-w_) - lz, sign*(-g_) + lz).clamp_(max=0)
-        result = -lz2 + psi**2 / lambda_w
-        result_1 = lambda_w.view(output_shape)*rho**2
-        result_2 = torch.sum(result, dim=tuple(range(len(output_shape), result.ndim))).view(output_shape)
-        z = sign*1/2*(result_1 + result_2)
-        return z
+        psi = torch.minimum(sign*(g_-w_) - lambda_w*L2_center, sign*(-g_) + lambda_w*L2_center).clamp_(max=0)
+        psi = -lambda_w*L2_center**2 + psi**2 / lambda_w
+        psi = torch.sum(psi, dim=tuple(range(len(output_shape), psi.ndim))).view(output_shape)
+        lambda_rho = lambda_w.view(output_shape)*rho**2
+        h_sdp = sign*1/2*(lambda_rho + psi)
+        return h_sdp
 
     def bound_backward(self, last_lA, last_uA, x=None, start_node=None,
                        unstable_idx=None, reduce_bias=True, **kwargs):
