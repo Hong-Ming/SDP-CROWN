@@ -61,7 +61,7 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
 
         # Initialize optimizable variables for L2 norm perturbation.
         self.lambda_out = OrderedDict()
-        # self.lambda_in = OrderedDict()
+        self.lambda_in = OrderedDict()
         # Alpha can be sparse in both spec dimension, and the C*H*W dimension.
         # We first deal with the sparse-feature alpha, which is sparse in the
         # C*H*W dimesnion of this layer.
@@ -145,9 +145,9 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 self.alpha[ns].data.copy_(alpha_init.data)  # This will broadcast to (2, sparse_spec) dimensions.
                 # For fully connected layer, lambda_in shape is (2, sparse_spec, batch, this_layer_shape)
                 # lambda_out shape is (2, sparse_spec, batch)
-                # self.lambda_in[ns] = torch.empty([self.alpha_size, sparsity + 1, batch_size, *alpha_shape],
-                #                 dtype=torch.float, device=ref.device, requires_grad=True)
-                # nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
+                self.lambda_in[ns] = torch.empty([self.alpha_size, sparsity + 1, batch_size, *alpha_shape],
+                                dtype=torch.float, device=ref.device, requires_grad=True)
+                nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
                 
                 if L2_variable_shape:
                     self.lambda_out[ns] = torch.ones([self.alpha_size, *L2_variable_shape[:4]],
@@ -189,9 +189,9 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 self.alpha[ns].data.copy_(alpha_init.data)  # This will broadcast to (2, spec) dimensions
                 # lambda_in shape is (2, spec, batch, this_layer_shape). "this_layer_shape" may still be sparse.
                 # lambda_out shape is (2, spec, batch).
-                # self.lambda_in[ns] = torch.empty([self.alpha_size, size_s, batch_size, *alpha_shape],
-                                    # dtype=torch.float, device=ref.device, requires_grad=True)
-                # nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
+                self.lambda_in[ns] = torch.empty([self.alpha_size, size_s, batch_size, *alpha_shape],
+                                    dtype=torch.float, device=ref.device, requires_grad=True)
+                nn.init.uniform_(self.lambda_in[ns], a=0.1, b=0.2)
                 
                 if L2_variable_shape is not None:
                     self.lambda_out[ns] = torch.ones([self.alpha_size, *L2_variable_shape[:4]],
@@ -497,29 +497,25 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
         # Update the bias if the L2 norm is available.
         if self.input_rho is not None and self.opt_stage in ['opt', 'reuse'] and self.L2_stage in ['opt']:
             selected_lambda_out = self.select_optimizable_variables_by_idx(last_lA, last_uA, unstable_idx, start_node, alpha_lookup_idx, self.lambda_out)
-            # selected_lambda_in = self.select_optimizable_variables_by_idx(last_lA, last_uA, unstable_idx, start_node, alpha_lookup_idx, self.lambda_in)
+            selected_lambda_in = self.select_optimizable_variables_by_idx(last_lA, last_uA, unstable_idx, start_node, alpha_lookup_idx, self.lambda_in)
             if last_uA is not None:
-                # if self.alpha_indices is not None:
-                #     full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[1], selected_lambda_in[1].shape[:-1]+self.shape, self.alpha_indices)
-                # else:
-                #     full_lambda_in = selected_lambda_in[1]
-                # full_lambda_in = maybe_unfold_patches(full_lambda_in, last_uA, alpha_lookup_idx)
-                full_lambda_in = []
+                if self.alpha_indices is not None:
+                    full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[1], selected_lambda_in[1].shape[:-1]+self.shape, self.alpha_indices)
+                else:
+                    full_lambda_in = selected_lambda_in[1]
+                full_lambda_in = maybe_unfold_patches(full_lambda_in, last_uA, alpha_lookup_idx)
                 ubias_ = self.reduce_bias_based_on_L2_norm(last_uA, uA, self.xc, self.input_rho, selected_lambda_out[1], full_lambda_in, start_node, ubias.shape, x, sign=+1)
                 # (TODO) Add elementwise bound to make sure sdp crown is always better
                 ubias = torch.min(ubias_, ubias)
-                # ubias = ubias_
             if last_lA is not None:
-                # if self.alpha_indices is not None:
-                #     full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[0], selected_lambda_in[0].shape[:-1]+self.shape, self.alpha_indices)
-                # else:
-                #     full_lambda_in = selected_lambda_in[0]
-                # full_lambda_in = maybe_unfold_patches(full_lambda_in, last_lA, alpha_lookup_idx)
-                full_lambda_in = []
+                if self.alpha_indices is not None:
+                    full_lambda_in = self.reconstruct_full_alpha(selected_lambda_in[0], selected_lambda_in[0].shape[:-1]+self.shape, self.alpha_indices)
+                else:
+                    full_lambda_in = selected_lambda_in[0]
+                full_lambda_in = maybe_unfold_patches(full_lambda_in, last_lA, alpha_lookup_idx)
                 lbias_ = self.reduce_bias_based_on_L2_norm(last_lA, lA, self.xc, self.input_rho, selected_lambda_out[0], full_lambda_in, start_node, lbias.shape, x, sign=-1)
                 # (TODO) Add elementwise bound to make sure sdp crown is always better
                 lbias = torch.max(lbias_, lbias)
-                # lbias = lbias_
 
         if self.cut_used:
             # propagate prerelu node in cut constraints
@@ -567,8 +563,8 @@ class BoundRelu(BoundTwoPieceLinear):
         with torch.no_grad():
             for v in self.lambda_out.values():
                 v.clamp_(min=1e-7)
-            # for v in self.lambda_in.values():
-            #     v.clamp_(min=1e-7)
+            for v in self.lambda_in.values():
+                v.clamp_(min=1e-7)
 
     def forward(self, x):
         self.shape = x.shape[1:]
