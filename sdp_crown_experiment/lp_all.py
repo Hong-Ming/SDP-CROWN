@@ -12,12 +12,12 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 from auto_LiRPA.operators import BoundLinear, BoundConv
     
-def verified_lp_full(dataset, labels, model, radius, clean_output, device, classes, args):
+def verified_lp_all(dataset, labels, model, radius, clean_output, device, classes, args):
     samples = dataset.shape[0]
     verification_fail = samples - len(clean_output)
     verification_fail_idx = []
     total_time = 0
-    log_dir = f'./logs/lp_full/{args.model.lower()}'
+    log_dir = f'./logs/lp_all/{args.model.lower()}'
     os.makedirs(log_dir, exist_ok=True)
 
     for idx, (image, label) in enumerate(zip(dataset, labels)):
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         'cifar10_cnn_a',
         'cifar10_cnn_b',
         'cifar10_cnn_c',
-        'cifar10_convbase',
+        'cifar10_convsmall',
         'cifar10_convdeep',
         'cifar10_convlarge',
         ])
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     print(f'perturbation: {radius_rescale}')
     print(f'The clean output for the {args.end-args.start} samples is {clean_output/(args.end-args.start)*100}%')
     
-    verified_lp_full(
+    verified_lp_all(
         dataset = dataset, 
         labels = labels, 
         model = model, 

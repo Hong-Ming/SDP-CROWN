@@ -93,9 +93,9 @@ def load_model_and_dataset(args, device):
             model = CIFAR10_CNN_C().to(device)
             checkpoint = torch.load('./models/cifar10_cnn_c.pth',map_location=device)
             args.dataset = "cifar10"
-        case "cifar10_convbase":
-            model = CIFAR10_ConvBase().to(device)
-            checkpoint = torch.load('./models/cifar10_convbase.pth',map_location=device)
+        case "cifar10_convsmall":
+            model = CIFAR10_ConvSmall().to(device)
+            checkpoint = torch.load('./models/cifar10_convsmall.pth',map_location=device)
             args.dataset = "cifar10"
         case "cifar10_convdeep":
             model = CIFAR10_ConvDeep().to(device)

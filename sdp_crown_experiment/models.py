@@ -94,7 +94,7 @@ def CIFAR10_CNN_C():
     )
     return model
 
-def CIFAR10_ConvBase():
+def CIFAR10_ConvSmall():
     model = nn.Sequential(
         nn.Conv2d(3, 16, 4, stride=2, padding=0),
         nn.ReLU(),

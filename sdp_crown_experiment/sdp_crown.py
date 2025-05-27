@@ -37,7 +37,7 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
         ptb = PerturbationLpNorm(norm=norm, eps=radius, x_U=x_U, x_L=x_L)
         image = BoundedTensor(image, ptb)
         lirpa_model = BoundedModule(model, image, device=image.device, verbose=0)
-        lirpa_model.set_bound_opts({'optimize_bound_args': {'iteration': 200, 'lr_alpha': args.lr_alpha, 'early_stop_patience': 20, 'fix_interm_bounds': False, 'enable_opt_interm_bounds':True, 'enable_SDP_crown': True, 'lr_lambda_out': args.lr_lambda}})
+        lirpa_model.set_bound_opts({'optimize_bound_args': {'iteration': 300, 'lr_alpha': args.lr_alpha, 'early_stop_patience': 20, 'fix_interm_bounds': False, 'enable_opt_interm_bounds':True, 'enable_SDP_crown': True, 'lr_lambda_out': args.lr_lambda}})
 
         # Run SDP-CROWN
         start_time = time.time()
@@ -79,12 +79,12 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--radius', default=24/255, type=parse_float_or_fraction, help='L2_norm range')
+    parser.add_argument('-r', '--radius', default=1, type=parse_float_or_fraction, help='L2_norm range')
     parser.add_argument('--lr_alpha', default=0.5, type=float, help='alpha learning rate')
     parser.add_argument('--lr_lambda', default=0.05, type=float, help='lmabda learning rate')
     parser.add_argument('--start', default=0, type=int, help='start_index')
     parser.add_argument('--end', default=200, type=int, help='end_index')
-    parser.add_argument('--model', default='cifar10_cnn_c',
+    parser.add_argument('--model', default='mnist_mlp',
     choices=[
         'mnist_mlp',
         'mnist_convsmall',
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         'cifar10_cnn_a',
         'cifar10_cnn_b',
         'cifar10_cnn_c',
-        'cifar10_convbase',
+        'cifar10_convsmall',
         'cifar10_convdeep',
         'cifar10_convlarge',
         ])

@@ -1,1 +1,0 @@
-python sdp_crown.py --model cifar10_cnn_c --radius 24/255
