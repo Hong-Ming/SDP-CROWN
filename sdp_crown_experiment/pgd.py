@@ -7,8 +7,6 @@ sys.path.append("../")
 
 from models import *
 from utils import *
-from auto_LiRPA import BoundedModule, BoundedTensor
-from auto_LiRPA.perturbations import PerturbationLpNorm
     
 def attack_pgd(dataset, labels, model, radius, clean_output, device, classes, args):
     samples = dataset.shape[0]
@@ -39,14 +37,12 @@ def attack_pgd(dataset, labels, model, radius, clean_output, device, classes, ar
         for c in C.unbind(dim=1):
             X = nn.Parameter(torch.zeros_like(image).uniform_(-radius, radius)).to(device)
             optimizer = torch.optim.SGD([X], lr=0.01, momentum=0.9, nesterov=True)
-
-
             for _ in range(num_iter):
                 optimizer.zero_grad()
                 loss = torch.sum(c*model(X))   
                 loss.backward()
                 optimizer.step()
-                # Project delta back to L2 ball
+                # projection
                 with torch.no_grad():
                     delta = X-image
                     d_norm = delta.reshape(-1).norm()
@@ -95,8 +91,6 @@ def attack_pgd(dataset, labels, model, radius, clean_output, device, classes, ar
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--radius', default=1, type=parse_float_or_fraction, help='L2_norm range')
-    parser.add_argument('--lr_alpha', default=0.5, type=float, help='alpha learning rate')
-    parser.add_argument('--lr_lambda', default=0.05, type=float, help='lmabda learning rate')
     parser.add_argument('--start', default=0, type=int, help='start_index')
     parser.add_argument('--end', default=200, type=int, help='end_index')
     parser.add_argument('--model', default='mnist_mlp',
