@@ -93,20 +93,20 @@ def plot_result(pgd_lower, pgd_upper, naive_lower, naive_upper, l2_lower, l2_upp
     plt.show()
 
 def plot_with_zero_crossing():
-    lp = np.load('/home/haoc8/Robust_verification_of_L2-norm/logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
-    l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_plot_2.0.npy')
-    alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_NOR_MLP_B_plot_2.0.npy')
-    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_NOR_MLP_B_plot_2.0.npy')
-    pgd = np.load('./logs/plot_output/final_plot/pgd_NOR_MLP_B_plot_2.0.npy')
+    lp = np.load('./logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
+    # l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_plot_2.0.npy')
+    # alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_NOR_MLP_B_plot_2.0.npy')
+    # naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_NOR_MLP_B_plot_2.0.npy')
+    # pgd = np.load('./logs/plot_output/final_plot/pgd_NOR_MLP_B_plot_2.0.npy')
     
-    l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    # l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    # alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    # naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    # pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_1.5.npy')
     
     l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_plot_1.5.npy')
     alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_4C3F_retrained_plot_1.5.npy')
-    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cifar_4C3F_retrained_plot_1.5.npy')
+    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_4C3F_retrained_plot_1.5.npy')
     pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_4C3F_retrained_plot_1.5.npy')
 
     lp = np.insert(lp, 0, l2_crown[0])
@@ -158,9 +158,10 @@ def plot_with_zero_crossing():
     plt.legend(loc='lower left', fontsize=20)
     plt.grid(alpha=0.6)
     plt.tight_layout()
+    plt.show()
 
-    plt.savefig('./graphic_result/verified_curve_new_with_zero_mark.eps', format='eps', dpi=1000)
-    plt.savefig('./graphic_result/verified_curve_new_with_zero_mark.png')
+    # plt.savefig('./graphic_result/verified_curve_new_with_zero_mark.eps', format='eps', dpi=1000)
+    # plt.savefig('./graphic_result/verified_curve_new_with_zero_mark.png')
 
 def stick():
     # 这里定义一种较为和谐的 4 色方案（取自常用调色板），分别用来画4根柱子
@@ -243,8 +244,9 @@ def stick():
     )
 
     plt.tight_layout()
-    plt.savefig('./graphic_result/verified_accuracy.eps', format='eps', dpi=1000)
-    plt.savefig('./graphic_result/verified_accuracy.png')
+    plt.show()
+    # plt.savefig('./graphic_result/verified_accuracy.eps', format='eps', dpi=1000)
+    # plt.savefig('./graphic_result/verified_accuracy.png')
     
     
 def h_plot():
@@ -254,8 +256,10 @@ def h_plot():
     alpha_crown_h_1 = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_crown_h_plot_2.0.npy')
     l2_crown_h_1    = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_l2_crown_h_plot_2.0.npy')
     
-    alpha_crown_h_2 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_crown_h_plot_2.5.npy')
-    l2_crown_h_2    = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_l2_crown_h_plot_2.5.npy')
+    # alpha_crown_h_2 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_crown_h_plot_2.0.npy')
+    # l2_crown_h_2    = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_l2_crown_h_plot_2.0.npy')
+    alpha_crown_h_2 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_conv_small_crown_h_plot_2.0.npy')
+    l2_crown_h_2    = np.load('./logs/plot_output/final_plot/l2_crown_cifar_conv_small_l2_crown_h_plot_2.0.npy')
     
     alpha_crown_h_3 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_crown_h_plot_1.5.npy')
     l2_crown_h_3    = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_l2_crown_h_plot_1.5.npy')
@@ -359,13 +363,14 @@ def h_plot():
 
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
+    plt.show()
 
     # 保存
-    plt.savefig('./graphic_result/h_plot.eps', format='eps', dpi=1000, bbox_inches='tight')
-    plt.savefig('./graphic_result/h_plot.png', dpi=300, bbox_inches='tight')
+    # plt.savefig('./graphic_result/h_plot.eps', format='eps', dpi=1000, bbox_inches='tight')
+    # plt.savefig('./graphic_result/h_plot.png', dpi=300, bbox_inches='tight')
     
 def plot_with_extended_curves():
-    lp = np.load('/home/haoc8/Robust_verification_of_L2-norm/logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
+    lp = np.load('./logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
     l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_plot_2.0.npy')
     alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_NOR_MLP_B_plot_2.0.npy')
     naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_NOR_MLP_B_plot_2.0.npy')
@@ -507,12 +512,16 @@ def sticks():
     ax.grid(alpha=0.2)
     # ax.set_title("Comparison of Different Bounds Methods", fontsize=12)
     plt.tight_layout()
-    plt.savefig('./graphic_result/error_bar.eps', format='eps', dpi=1000)
-    plt.savefig('./graphic_result/error_bar.png')
+    plt.show()
+    # plt.savefig('./graphic_result/error_bar.eps', format='eps', dpi=1000)
+    # plt.savefig('./graphic_result/error_bar.png')
 
 if __name__ == '__main__':
-    # plot_with_zero_crossing()
-    # stick()
-    h_plot()
+    # figure 4 (a)(b)
+    plot_with_zero_crossing()
+
+    # figure 3
+    # h_plot()
+
     # plot_with_extended_curves()
     # sticks()

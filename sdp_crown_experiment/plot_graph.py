@@ -84,7 +84,7 @@ def plot_one_subplot(
 
 def plot_three_figures_together():
     # ========== 第一组数据 (示例: NOR_MLP_B_plot_2.0) ==========
-    lp_1 = np.load('/home/haoc8/Robust_verification_of_L2-norm/logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
+    lp_1 = np.load('./logs/plot_output/final_plot/lp_full_plot_2.0_margin_2.npy')
     l2_crown_1 = np.load('./logs/plot_output/final_plot/l2_crown_NOR_MLP_B_plot_2.0.npy')
     alpha_crown_1 = np.load('./logs/plot_output/final_plot/alpha_crown_NOR_MLP_B_plot_2.0.npy')
     naive_lipschitz_1 = np.load('./logs/plot_output/final_plot/naive_lipschitz_NOR_MLP_B_plot_2.0.npy')

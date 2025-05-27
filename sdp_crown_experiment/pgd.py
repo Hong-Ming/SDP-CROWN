@@ -38,7 +38,8 @@ def attack_pgd(dataset, labels, model, radius, clean_output, device, classes, ar
         start_time = time.time()
         for c in C.unbind(dim=1):
             X = nn.Parameter(torch.zeros_like(image).uniform_(-radius, radius)).to(device)
-            optimizer = torch.optim.Adam([X])
+            optimizer = torch.optim.SGD([X], lr=0.01, momentum=0.9, nesterov=True)
+
 
             for _ in range(num_iter):
                 optimizer.zero_grad()
