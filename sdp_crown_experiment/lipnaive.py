@@ -56,7 +56,7 @@ def verified_lip(dataset, labels, model, radius, clean_output, device, classes, 
             sample_log = {
                 'sample_idx': sample_idx,
                 'true_label': label.item() if isinstance(label, torch.Tensor) else label,
-                'margins': lip_lb .cpu().tolist(),       
+                'margins': lip_lb.cpu().tolist()[0],       
                 'verifiction_status': verifiction_status,
                 'elapsed_time': elapsed_time,
             }
