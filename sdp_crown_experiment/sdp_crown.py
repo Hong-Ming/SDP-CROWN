@@ -15,7 +15,7 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
     verification_fail = samples - len(clean_output)
     verification_fail_idx = []
     total_time = 0
-    log_dir = f'./logs/sdp_crown/{args.model.lower()}'
+    log_dir = f'./logs/sdp_crown/{args.model.lower()}/{args.radius}'
     os.makedirs(log_dir, exist_ok=True)
 
     for idx, (image, label) in enumerate(zip(dataset, labels)):

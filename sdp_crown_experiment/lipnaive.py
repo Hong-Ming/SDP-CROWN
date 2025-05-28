@@ -12,7 +12,7 @@ def verified_lip(dataset, labels, model, radius, clean_output, device, classes, 
     samples = dataset.shape[0]
     verification_fail = samples - len(clean_output)
     verification_fail_idx = []
-    log_dir = f'./logs/lip/{args.model.lower()}'
+    log_dir = f'./logs/lip/{args.model.lower()}/{args.radius}'
     os.makedirs(log_dir, exist_ok=True)
 
     # Estimate global Lipschitz constant

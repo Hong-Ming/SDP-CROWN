@@ -17,7 +17,7 @@ def verified_lp_all(dataset, labels, model, radius, clean_output, device, classe
     verification_fail = samples - len(clean_output)
     verification_fail_idx = []
     total_time = 0
-    log_dir = f'./logs/lp_all/{args.model.lower()}'
+    log_dir = f'./logs/lp_all/{args.model.lower()}/{args.radius}'
     os.makedirs(log_dir, exist_ok=True)
 
     for idx, (image, label) in enumerate(zip(dataset, labels)):
