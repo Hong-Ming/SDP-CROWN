@@ -132,3 +132,19 @@ def load_model_and_dataset(args, device):
     dataset = dataset[args.start:args.end]
     labels = labels[args.start:args.end]
     return model, dataset, labels, range, classes
+
+def power_iteration(conv_layer, input_shape, num_iterations=1000):
+    """Calculate the Lipschitz constant of a convolutional layer using Power Iteration."""
+    x_k = torch.randn(input_shape).to(conv_layer.weight.device)
+    x_k = x_k / x_k.norm(p=2)
+
+    for _ in range(num_iterations):
+        x_k1 = conv_layer(x_k)
+        x_k1 = F.conv_transpose2d(x_k1, conv_layer.weight, bias=None, stride=conv_layer.stride,
+                                padding=conv_layer.padding, dilation=conv_layer.dilation, 
+                                groups=conv_layer.groups)
+        x_k = x_k1 / x_k1.norm(p=2)
+    # The largest singular value (Lipschitz constant) is based on the last computed norm before normalization
+    x_k1 = conv_layer(x_k)
+    sigma = x_k1.norm(p=2) / x_k.norm(p=2)
+    return sigma.item()
