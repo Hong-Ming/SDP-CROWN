@@ -518,10 +518,10 @@ def sticks():
 
 if __name__ == '__main__':
     # figure 4 (a)(b)
-    plot_with_zero_crossing()
+    # plot_with_zero_crossing()
 
     # figure 3
-    # h_plot()
+    h_plot()
 
     # plot_with_extended_curves()
     # sticks()

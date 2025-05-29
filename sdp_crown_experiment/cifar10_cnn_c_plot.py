@@ -25,7 +25,7 @@ args = parser.parse_args()
 args.model = 'cifar10_cnn_c'
 num_sample = 10
 radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-radii = radii[args.sr:]
+radii = radii[args.sr:args.se]
 
 
 

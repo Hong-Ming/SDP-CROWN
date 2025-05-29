@@ -45,17 +45,25 @@ parser.add_argument('--end', default=200, type=int, help='end_index')
 args = parser.parse_args()
 
 
-args.model = 'mnist_mlp'
-num_sample = 10
-radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-         1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+# args.model = 'mnist_mlp'
+# num_sample = 10
+# radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+#          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+# args.model = 'cifar10_cnn_c'
+# num_sample = 10
+# radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+# args.model = 'cifar10_convlarge'
+# num_sample = 10
+# radii = [0]
 
 
-pgd = []
-sdp_crown = []
-alpha_crown = []
-lipnaive = []
-lp_all = []
+pgd_data = []
+sdp_crown_data = []
+alpha_crown_data = []
+lipnaive_data = []
+lp_all_data = []
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
@@ -73,6 +81,7 @@ print(f'The clean output for the {args.end-args.start} samples is {clean_output/
 
 args.end = correct_indices[num_sample]
 correct_indices = correct_indices[:num_sample]
+N = num_sample*(classes-1)
 for radius in radii:
     args.radius = radius
     model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
@@ -83,8 +92,20 @@ for radius in radii:
     lipnaive_sum = 0
     lp_all_sum = 0
     for sample_idx in correct_indices:
-        pgd_file += read_log_file(f'./logs/pgd/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        sdp_crown_file += read_log_file(f'./logs/sdp_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        alpha_crown_file += read_log_file(f'./logs/alpha_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        lipnaive_file += read_log_file(f'./logs/lipnaive/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        lp_all_file += read_log_file(f'./logs/lp_all/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        pgd_sum += sum(read_log_file(f'./logs/pgd/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')['margins'])
+        sdp_crown_sum += sum(read_log_file(f'./logs/sdp_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')['margins'])
+        alpha_crown_sum += sum(read_log_file(f'./logs/alpha_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')['margins'])
+        lipnaive_sum += sum(read_log_file(f'./logs/lipnaive/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')['margins'])
+        lp_all_sum += sum(read_log_file(f'./logs/lp_all/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')['margins'])
+    pgd_data.append(pgd_sum/N)
+    sdp_crown_data.append(sdp_crown_sum/N)
+    alpha_crown_data.append(alpha_crown_sum/N)
+    lipnaive_data.append(lipnaive_sum/N)
+    lp_all_data.append(lp_all_sum/N)
+
+print(f'Radius: {radii}')
+print(f'PGD: {pgd_data}')
+print(f'SDP-CROWN: {sdp_crown_data}')
+print(f'Alpha-CROWN: {alpha_crown_data}')
+print(f'LipNaive: {lipnaive_data}')
+print(f'LP-All: {lp_all_data}')
