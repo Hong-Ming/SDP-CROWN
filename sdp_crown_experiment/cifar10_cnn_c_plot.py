@@ -24,7 +24,7 @@ args = parser.parse_args()
 
 args.model = 'cifar10_cnn_c'
 num_sample = 10
-radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 radii = radii[args.sr:args.se]
 
 
@@ -52,4 +52,4 @@ for radius in radii:
     verified_sdp_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
     verified_alpha_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
     verified_lipnaive(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
-    verified_lp_all(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
+    # verified_lp_all(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
