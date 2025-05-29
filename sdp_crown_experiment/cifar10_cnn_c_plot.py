@@ -24,8 +24,7 @@ args = parser.parse_args()
 
 args.model = 'cifar10_cnn_c'
 num_sample = 10
-# radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-radii = [0.1]
+radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 radii = radii[args.sr:args.se]
 
 
@@ -46,8 +45,6 @@ print(f'The clean output for the {args.end-args.start} samples is {clean_output/
 
 args.end = correct_indices[num_sample]
 correct_indices = correct_indices[:num_sample]
-# correct_indices = torch.tensor([ 0,  2,  7,  8, 14, 16, 17, 18, 19, 20])
-correct_indices = torch.tensor([ 7,  8])
 
 for radius in radii:
     args.radius = radius
