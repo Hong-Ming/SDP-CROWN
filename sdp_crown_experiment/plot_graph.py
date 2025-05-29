@@ -94,14 +94,15 @@ def plot_three_figures_together():
     radius_1 = np.linspace(0, 2.0, 21)
 
     # ========== 第二组数据 (示例: cifar_cnn_b_adv_retrained_plot_1.5) ==========
-    l2_crown_2 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_2.5.npy')
-    alpha_crown_2 = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_2.5.npy')
-    naive_lipschitz_2 = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_2.5.npy')
-    pgd_2 = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_2.5.npy')
+    # l2_crown_cifar_cnn_b_adv_retrained_plot_1.5
+    l2_crown_2 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_2.0.npy')
+    alpha_crown_2 = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_2.0.npy')
+    naive_lipschitz_2 = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_2.0.npy')
+    pgd_2 = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_2.0.npy')
 
     # 假设第二组目前没有 LP 数据，lp_2 = None
     lp_2 = None
-    radius_2 = np.linspace(0, 2.5, 21)
+    radius_2 = np.linspace(0, 2.0, 21)
 
     # ========== 第三组数据 (示例: cifar_4C3F_retrained_plot_1.5) ==========
     l2_crown_3 = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_plot_1.5.npy')
@@ -164,8 +165,8 @@ def plot_three_figures_together():
 
     plt.tight_layout()
     # 如果需要保存
-    plt.savefig('./graphic_result/three_subplots.png', dpi=300)
-    plt.savefig('./graphic_result/three_subplots.eps', format='eps', dpi=1000)
+    # plt.savefig('./graphic_result/three_subplots.png', dpi=300)
+    # plt.savefig('./graphic_result/three_subplots.eps', format='eps', dpi=1000)
     # 显示
     plt.show()
 

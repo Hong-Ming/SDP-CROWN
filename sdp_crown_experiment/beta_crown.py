@@ -10,12 +10,12 @@ from utils import *
 from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
     
-def verified_crown(dataset, labels, model, radius, clean_output, device, classes, args):
+def verified_beta_crown(dataset, labels, model, radius, clean_output, device, classes, args):
     samples = dataset.shape[0]
     verification_fail = samples - len(clean_output)
     verification_fail_idx = []
     total_time = 0
-    log_dir = f'./logs/crown/{args.model.lower()}/{args.radius}'
+    log_dir = f'./logs/beta_crown/{args.model.lower()}/{args.radius}'
     os.makedirs(log_dir, exist_ok=True)
 
     for idx, (image, label) in enumerate(zip(dataset, labels)):
@@ -37,7 +37,8 @@ def verified_crown(dataset, labels, model, radius, clean_output, device, classes
         ptb = PerturbationLpNorm(norm=norm, eps=radius, x_U=x_U, x_L=x_L)
         image = BoundedTensor(image, ptb)
         lirpa_model = BoundedModule(model, image, device=image.device, verbose=0)
-        lirpa_model.set_bound_opts({'optimize_bound_args': {'iteration': 300, 'lr_alpha': args.lr_alpha, 'fix_interm_bounds': False, 'enable_opt_interm_bounds':True,'early_stop_patience': 20}})
+        # lirpa_model.set_bound_opts({'optimize_bound_args': {'iteration': 300, 'lr_alpha': args.lr_alpha, 'early_stop_patience': 20, 'fix_interm_bounds': False, 'enable_opt_interm_bounds':True, 'enable_SDP_crown': True, 'lr_lambda_out': args.lr_lambda}})
+        lirpa_model.set_bound_opts({'optimize_bound_args': {'iteration': 300, 'lr_alpha': args.lr_alpha, 'early_stop_patience': 20, 'fix_interm_bounds': False, 'enable_opt_interm_bounds':True, 'enable_beta_crown': True}})
 
         # Run CROWN
         start_time = time.time()
@@ -110,7 +111,7 @@ if __name__ == '__main__':
     print(f'perturbation: {radius_rescale}')
     print(f'The clean output for the {args.end-args.start} samples is {clean_output/(args.end-args.start)*100}%')
     
-    verified_crown(
+    verified_beta_crown(
         dataset = dataset, 
         labels = labels, 
         model = model, 

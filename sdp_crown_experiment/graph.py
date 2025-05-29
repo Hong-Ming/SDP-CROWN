@@ -99,17 +99,17 @@ def plot_with_zero_crossing():
     # naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_NOR_MLP_B_plot_2.0.npy')
     # pgd = np.load('./logs/plot_output/final_plot/pgd_NOR_MLP_B_plot_2.0.npy')
     
-    # l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    # alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    # naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_1.5.npy')
-    # pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_cnn_b_adv_retrained_plot_1.5.npy')
+    pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_cnn_b_adv_retrained_plot_1.5.npy')
     
-    l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_plot_1.5.npy')
-    alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_4C3F_retrained_plot_1.5.npy')
-    naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_4C3F_retrained_plot_1.5.npy')
-    pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_4C3F_retrained_plot_1.5.npy')
+    # l2_crown = np.load('./logs/plot_output/final_plot/l2_crown_cifar_4C3F_retrained_plot_1.5.npy')
+    # alpha_crown = np.load('./logs/plot_output/final_plot/alpha_crown_cifar_4C3F_retrained_plot_1.5.npy')
+    # naive_lipschitz = np.load('./logs/plot_output/final_plot/naive_lipschitz_cifar_4C3F_retrained_plot_1.5.npy')
+    # pgd = np.load('./logs/plot_output/final_plot/pgd_cifar_4C3F_retrained_plot_1.5.npy')
 
-    lp = np.insert(lp, 0, l2_crown[0])
+    # lp = np.insert(lp, 0, l2_crown[0])
     pgd[0] = l2_crown[0]
 
     l2_radius = np.linspace(0, 2.0, 21)
