@@ -15,6 +15,7 @@ parser.add_argument('--lr_alpha', default=0.5, type=float, help='alpha learning 
 parser.add_argument('--lr_lambda', default=0.05, type=float, help='lmabda learning rate')
 parser.add_argument('--start', default=0, type=int, help='start_index')
 parser.add_argument('--end', default=200, type=int, help='end_index')
+parser.add_argument('--sr', default=0, type=int, help='end_index')
 args = parser.parse_args()
 
 
@@ -25,6 +26,7 @@ num_sample = 10
 radii = [0.   , 0.075, 0.15 , 0.225, 0.3  , 0.375, 0.45 , 0.525, 0.6  ,
          0.675, 0.75 , 0.825, 0.9  , 0.975, 1.05 , 1.125, 1.2  , 1.275,
          1.35 , 1.425, 1.5]
+radii = radii[args.sr:]
 
 
 

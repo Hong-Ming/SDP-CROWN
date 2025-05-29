@@ -30,7 +30,8 @@ def read_log_file(log_file):
             elif key == "elapsed_time":
                 file_dict[key] = float(val)
             elif key == "margins":
-                file_dict[key] = np.array(ast.literal_eval(val))   # turns "[...]" into a Python list
+                # file_dict[key] = np.array(ast.literal_eval(val))   # turns "[...]" into a Python list
+                file_dict[key] = ast.literal_eval(val)   # turns "[...]" into a Python list
             else:
                 file_dict[key] = val
     return file_dict
@@ -41,19 +42,21 @@ parser.add_argument('--lr_alpha', default=0.5, type=float, help='alpha learning 
 parser.add_argument('--lr_lambda', default=0.05, type=float, help='lmabda learning rate')
 parser.add_argument('--start', default=0, type=int, help='start_index')
 parser.add_argument('--end', default=200, type=int, help='end_index')
-parser.add_argument('--model', default='mnist_mlp',
-choices=[
-    'mnist_mlp',
-    'mnist_convsmall',
-    'mnist_convlarge',
-    'cifar10_cnn_a',
-    'cifar10_cnn_b',
-    'cifar10_cnn_c',
-    'cifar10_convsmall',
-    'cifar10_convdeep',
-    'cifar10_convlarge',
-    ])
 args = parser.parse_args()
+
+
+args.model = 'mnist_mlp'
+num_sample = 10
+radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+         1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+
+pgd = []
+sdp_crown = []
+alpha_crown = []
+lipnaive = []
+lp_all = []
+
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
 
@@ -68,18 +71,20 @@ with torch.no_grad():
 print(f'perturbation: {radius_rescale}')
 print(f'The clean output for the {args.end-args.start} samples is {clean_output/(args.end-args.start)*100}%')
 
-
-num_sample = 10
 args.end = correct_indices[num_sample]
 correct_indices = correct_indices[:num_sample]
-radii = [0]
 for radius in radii:
     args.radius = radius
     model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
     
+    pgd_sum = 0
+    sdp_crown_sum = 0
+    alpha_crown_sum = 0
+    lipnaive_sum = 0
+    lp_all_sum = 0
     for sample_idx in correct_indices:
-        pgd_file = read_log_file(f'./logs/pgd/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        sdp_crown_file = read_log_file(f'./logs/sdp_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        alpha_crown_file = read_log_file(f'./logs/alpha_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        lipnaive_file = read_log_file(f'./logs/lipnaive/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
-        lp_all_file = read_log_file(f'./logs/lp_all/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        pgd_file += read_log_file(f'./logs/pgd/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        sdp_crown_file += read_log_file(f'./logs/sdp_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        alpha_crown_file += read_log_file(f'./logs/alpha_crown/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        lipnaive_file += read_log_file(f'./logs/lipnaive/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
+        lp_all_file += read_log_file(f'./logs/lp_all/{args.model.lower()}/{args.radius}/sample_{sample_idx}.log')
