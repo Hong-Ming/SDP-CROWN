@@ -45,14 +45,19 @@ parser.add_argument('--end', default=200, type=int, help='end_index')
 args = parser.parse_args()
 
 
-# args.model = 'mnist_mlp'
+args.model = 'mnist_mlp'
+num_sample = 10
+radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+         1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+# args.model = 'cifar10_cnn_c'
+# num_sample = 10
+# radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+# args.model = 'cifar10_convsmall'
 # num_sample = 10
 # radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
 #          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-
-args.model = 'cifar10_cnn_c'
-num_sample = 10
-radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 # args.model = 'cifar10_convlarge'
 # num_sample = 10
@@ -103,9 +108,9 @@ for radius in radii:
     lipnaive_data.append(lipnaive_sum/N)
     lp_all_data.append(lp_all_sum/N)
 
-print(f'Radius: {radii}')
-print(f'PGD: {pgd_data}')
-print(f'SDP-CROWN: {sdp_crown_data}')
-print(f'Alpha-CROWN: {alpha_crown_data}')
-print(f'LipNaive: {lipnaive_data}')
-print(f'LP-All: {lp_all_data}')
+print(f'radius = {radii};')
+print(f'pgd = {pgd_data};')
+print(f'sdp_crown = {sdp_crown_data};')
+print(f'alpha_crown = {alpha_crown_data};')
+print(f'lip_naive = {lipnaive_data};')
+print(f'lp_all = {lp_all_data};')

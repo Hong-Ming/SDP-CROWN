@@ -15,23 +15,28 @@ def verified_lipnaive(dataset, labels, model, radius, clean_output, device, clas
     log_dir = f'./logs/lipnaive/{args.model.lower()}/{args.radius}'
     os.makedirs(log_dir, exist_ok=True)
 
-    # Estimate global Lipschitz constant
+    # Estimate global Lipschitz constant with respect to each class
     start_time = time.time()
+    lip_class = torch.empty(classes, 1, classes-1)
     global_input = dataset[0].unsqueeze(0).to(device)
-    lipschitz_constant = 1
-    for _, layer in enumerate(model.modules()):
+    current_lipschitz_constant = 1
+    for idx, layer in enumerate(model.modules()):
         if isinstance(layer, nn.Linear):
             weight = layer.weight.data
-            _, S, _ = torch.svd(weight)
-            spectral_norm = S[0].item()
-            lipschitz_constant *= spectral_norm
-            print(f'Lipschitz constant bound up to the {layer}: {lipschitz_constant}')
+            if idx == len(list(model.modules())) -1:
+                for i in range(classes):
+                    C = build_C(torch.tensor([i]).to(device), classes)
+                    lip_class[i] = current_lipschitz_constant * C.matmul(weight).norm(dim=2)
+                    print(f'Lipschitz constant bound with respect to class {i}: {lip_class[i]}')
+            else:
+                _, S, _ = torch.svd(weight)
+                current_lipschitz_constant *= S[0].item()
+                print(f'Lipschitz constant bound up to the {layer}: {current_lipschitz_constant}')
         
         elif isinstance(layer, nn.Conv2d):
-            lipschitz_constant *= power_iteration(layer, global_input.shape)
+            current_lipschitz_constant *= power_iteration(layer, global_input.shape)
             global_input = layer(global_input)
-            print(f'Lipschitz constant bound up to the {layer}: {lipschitz_constant}')
-    # lipschitz_constant = compute_lipschitz_constant(model, global_input)
+            print(f'Lipschitz constant bound up to the {layer}: {current_lipschitz_constant}')
     end_time = time.time()
     elapsed_time = end_time - start_time
 
@@ -44,9 +49,7 @@ def verified_lipnaive(dataset, labels, model, radius, clean_output, device, clas
         image = image.unsqueeze(0).to(device)
         label = label.unsqueeze(0).to(device)
         C = build_C(label, classes)
-        C = C.permute(1,0,2)
-        lip_lb = torch.sum(C*model(image),dim=2) - lipschitz_constant*radius*C.norm(dim=2)
-        lip_lb = lip_lb.permute(1,0)
+        lip_lb = (C*model(image)).sum(dim=2) - radius*lip_class[label.squeeze(0)]
 
         with torch.no_grad():
             if torch.any(lip_lb < 0):
