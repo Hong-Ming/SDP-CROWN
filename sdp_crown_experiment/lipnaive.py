@@ -17,7 +17,7 @@ def verified_lipnaive(dataset, labels, model, radius, clean_output, device, clas
 
     # Estimate global Lipschitz constant with respect to each class
     start_time = time.time()
-    lip_class = torch.empty(classes, 1, classes-1)
+    lip_class = torch.empty(classes, 1, classes-1).to(device)
     global_input = dataset[0].unsqueeze(0).to(device)
     current_lipschitz_constant = 1
     for idx, layer in enumerate(model.modules()):
