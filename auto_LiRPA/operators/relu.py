@@ -513,6 +513,9 @@ class BoundTwoPieceLinear(BoundOptimizableActivation):
                 lbias_ = self.reduce_bias_based_on_L2_norm(last_lA, lA, self.xc, self.input_rho, selected_lambda_out[0], full_lambda_in, start_node, lbias.shape, x, sign=-1)
                 # (TODO) Add elementwise bound to make sure sdp crown is always better
                 # lbias = torch.max(lbias_, lbias)
+                # print(f'Gap: {lbias_.view(1,-1)-lbias.view(1,-1)}')
+                self.sdp_lbias = lbias_
+                self.alpha_lbias = lbias
                 lbias = lbias_
 
         if self.cut_used:
