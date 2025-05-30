@@ -3,6 +3,7 @@ import sys
 import torch
 import time
 import argparse
+import gc
 sys.path.append("../")
 
 from models import *
@@ -21,6 +22,7 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
     for idx, (image, label) in enumerate(zip(dataset, labels)):
         if idx not in clean_output:
             continue
+        gc.collect()
         torch.cuda.empty_cache()
         sample_idx = args.start + idx
         verifiction_status = "Success"
