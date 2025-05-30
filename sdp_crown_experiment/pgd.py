@@ -31,7 +31,7 @@ def attack_pgd(dataset, labels, model, radius, clean_output, device, classes, ar
             x_L = torch.zeros_like(image)
 
         # Run pgd
-        num_iter = 300
+        num_iter = 1000
         pgd_ub = []
         start_time = time.time()
         for c in C.unbind(dim=1):
