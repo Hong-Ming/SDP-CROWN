@@ -52,8 +52,8 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
                 verifiction_status = "Fail"
                 verification_fail_idx.append(sample_idx)
             
-            sdp_offset = torch.zeros(1,classes-1)
-            alpha_offset = torch.zeros(1,classes-1)
+            sdp_offset = torch.zeros(1,classes-1).to(device)
+            alpha_offset = torch.zeros(1,classes-1).to(device)
             for _, layer in lirpa_model._modules.items():
                 if getattr(layer,'sdp_lbias',None) is not None and getattr(layer,'alpha_lbias',None) is not None:
                     sdp_offset += layer.sdp_lbias.view(1,-1)
