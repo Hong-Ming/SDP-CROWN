@@ -54,7 +54,7 @@ for radius in radii:
     model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
     attack_pgd(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
     # verified_sdp_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
-    torch.cuda.empty_cache()
+    # torch.cuda.empty_cache()
     # verified_alpha_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
     # torch.cuda.empty_cache()
     verified_lipnaive(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)

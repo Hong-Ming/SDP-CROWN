@@ -17,23 +17,26 @@ from utils import *
 
 def read_log_file(log_file):
     file_dict = {}
-    with open(log_file) as f:
-        for line in f:
-            line = line.strip()
-            key, val = line.split(":", 1)
-            key = key.strip()
-            val = val.strip()
+    if os.path.exists(log_file):
+        with open(log_file) as f:
+            for line in f:
+                line = line.strip()
+                key, val = line.split(":", 1)
+                key = key.strip()
+                val = val.strip()
 
-            # convert to native types
-            if key in ("sample_idx", "true_label"):
-                file_dict[key] = int(val)
-            elif key == "elapsed_time":
-                file_dict[key] = float(val)
-            elif key == "margins":
-                # file_dict[key] = np.array(ast.literal_eval(val))   # turns "[...]" into a Python list
-                file_dict[key] = ast.literal_eval(val)   # turns "[...]" into a Python list
-            else:
-                file_dict[key] = val
+                # convert to native types
+                if key in ("sample_idx", "true_label"):
+                    file_dict[key] = int(val)
+                elif key == "elapsed_time":
+                    file_dict[key] = float(val)
+                elif key == "margins":
+                    # file_dict[key] = np.array(ast.literal_eval(val))   # turns "[...]" into a Python list
+                    file_dict[key] = ast.literal_eval(val)   # turns "[...]" into a Python list
+                else:
+                    file_dict[key] = val
+    else:
+        file_dict["margins"] = [-np.inf]
     return file_dict
 
 parser = argparse.ArgumentParser()
@@ -50,18 +53,19 @@ args = parser.parse_args()
 # radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
 #          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
 
-args.model = 'cifar10_cnn_c'
-num_sample = 10
-radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# args.model = 'cifar10_cnn_c'
+# num_sample = 10
+# radii = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 # args.model = 'cifar10_convsmall'
 # num_sample = 10
 # radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
 #          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
 
-# args.model = 'cifar10_convlarge'
-# num_sample = 10
-# radii = [0]
+args.model = 'cifar10_convlarge'
+num_sample = 10
+radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+         1.1, 1.2, 1.3, 1.4, 1.5]
 
 
 pgd_data = []
