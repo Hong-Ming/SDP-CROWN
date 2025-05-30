@@ -21,7 +21,7 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
     for idx, (image, label) in enumerate(zip(dataset, labels)):
         if idx not in clean_output:
             continue
-        
+        torch.cuda.empty_cache()
         sample_idx = args.start + idx
         verifiction_status = "Success"
         image = image.unsqueeze(0).to(device)
