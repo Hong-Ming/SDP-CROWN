@@ -23,8 +23,9 @@ args = parser.parse_args()
 
 args.model = 'cifar10_convlarge'
 num_sample = 10
-radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-         1.1, 1.2, 1.3, 1.4, 1.5]
+# radii = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+#          1.1, 1.2, 1.3, 1.4, 1.5]
+radii = [0.025, 0.05, 0.075, 0.125, 0.15, 0.175, 0.225, 0.25, 0.275]
 # radii = [0.   , 0.075, 0.15 , 0.225, 0.3  , 0.375, 0.45 , 0.525, 0.6  ,
 #          0.675, 0.75 , 0.825, 0.9  , 0.975, 1.05 , 1.125, 1.2  , 1.275,
 #          1.35 , 1.425, 1.5]
@@ -53,8 +54,8 @@ for radius in radii:
     args.radius = radius
     model, dataset, labels, radius_rescale, classes = load_model_and_dataset(args, device)
     attack_pgd(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
-    # verified_sdp_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
+    verified_sdp_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)  
     # torch.cuda.empty_cache()
-    # verified_alpha_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
+    verified_alpha_crown(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
     # torch.cuda.empty_cache()
     verified_lipnaive(dataset = dataset, labels = labels, model = model, radius = radius_rescale, clean_output = correct_indices, device = device, classes = classes, args = args)
