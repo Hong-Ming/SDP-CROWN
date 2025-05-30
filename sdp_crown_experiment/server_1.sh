@@ -1,0 +1,2 @@
+python mnist_convlarge_h_plot.py
+python cifar10_convlarge_h_plot.py
