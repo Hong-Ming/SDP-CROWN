@@ -52,12 +52,14 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
                 verifiction_status = "Fail"
                 verification_fail_idx.append(sample_idx)
             
-            sdp_offset = torch.zeros(1,classes-1).to(device)
-            alpha_offset = torch.zeros(1,classes-1).to(device)
+            # sdp_offset = torch.zeros(1,classes-1).to(device)
+            # alpha_offset = torch.zeros(1,classes-1).to(device)
+            sdp_offset = []
+            alpha_offset = []
             for _, layer in lirpa_model._modules.items():
                 if getattr(layer,'sdp_lbias',None) is not None and getattr(layer,'alpha_lbias',None) is not None:
-                    sdp_offset += layer.sdp_lbias.view(1,-1)
-                    alpha_offset += layer.alpha_lbias.view(1,-1)
+                    sdp_offset.append(layer.sdp_lbias.view(1,-1).cpu().tolist()[0])
+                    alpha_offset.append(layer.alpha_lbias.view(1,-1).cpu().tolist()[0])
             
             elapsed_time = end_time - start_time
             total_time += elapsed_time
@@ -65,8 +67,8 @@ def verified_sdp_crown(dataset, labels, model, radius, clean_output, device, cla
                 'sample_idx': sample_idx,
                 'true_label': label.item() if isinstance(label, torch.Tensor) else label,
                 'margins': crown_lb.cpu().tolist()[0],  
-                'sdp_offset': sdp_offset.cpu().tolist()[0],  
-                'alpha_offset': alpha_offset.cpu().tolist()[0],     
+                'sdp_offset': sdp_offset,  
+                'alpha_offset': alpha_offset,     
                 'verifiction_status': verifiction_status,
                 'elapsed_time': elapsed_time,
             }

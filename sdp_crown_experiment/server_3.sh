@@ -1,0 +1,2 @@
+python mnist_convsmall_h_plot.py
+python cifar10_convsmall_h_plot.py

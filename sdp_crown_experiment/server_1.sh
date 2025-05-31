@@ -1,3 +1,36 @@
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 0 --end 1
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 1 --end 2
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 2 --end 3
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 4 --end 5
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 6 --end 7
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 7 --end 8
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 8 --end 9
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 11 --end 12
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 13 --end 14
+python sdp_crown.py --model cifar10_convlarge --radius 0.0 --start 14 --end 15
+
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 0 --end 1
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 1 --end 2
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 2 --end 3
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 4 --end 5
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 6 --end 7
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 7 --end 8
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 8 --end 9
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 11 --end 12
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 13 --end 14
+python sdp_crown.py --model cifar10_convlarge --radius 0.025 --start 14 --end 15
+
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 0 --end 1
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 1 --end 2
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 2 --end 3
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 4 --end 5
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 6 --end 7
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 7 --end 8
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 8 --end 9
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 11 --end 12
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 13 --end 14
+python sdp_crown.py --model cifar10_convlarge --radius 0.05 --start 14 --end 15
+
 python sdp_crown.py --model cifar10_convlarge --radius 0.075 --start 0 --end 1
 python sdp_crown.py --model cifar10_convlarge --radius 0.075 --start 1 --end 2
 python sdp_crown.py --model cifar10_convlarge --radius 0.075 --start 2 --end 3
@@ -108,3 +141,4 @@ python sdp_crown.py --model cifar10_convlarge --radius 0.3 --start 11 --end 12
 python sdp_crown.py --model cifar10_convlarge --radius 0.3 --start 13 --end 14
 python sdp_crown.py --model cifar10_convlarge --radius 0.3 --start 14 --end 15
 
+python mnist_convlarge_h_plot.py

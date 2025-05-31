@@ -1,0 +1,2 @@
+python mnist_mlp_h_plot.py
+python cifar10_cnn_a_h_plot.py
